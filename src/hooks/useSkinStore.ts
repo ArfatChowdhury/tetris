@@ -1,0 +1,45 @@
+import { useState, useEffect, useCallback } from 'react';
+import { Storage, KEYS } from '../utils/storage';
+import { SKINS, SkinDefinition } from '../constants/skins';
+
+export const useSkinStore = () => {
+  const [ownedSkins, setOwnedSkins] = useState<string[]>(['default', 'cherry_blossom']);
+  const [activeSkinId, setActiveSkinId] = useState<string>('default');
+
+  useEffect(() => {
+    const loadSkins = async () => {
+      const owned = await Storage.get<string[]>(KEYS.OWNED_SKINS);
+      if (owned) setOwnedSkins(owned);
+      
+      const active = await Storage.get<string>(KEYS.ACTIVE_SKIN);
+      if (active) setActiveSkinId(active);
+    };
+    loadSkins();
+  }, []);
+
+  const unlockSkin = useCallback(async (skinId: string) => {
+    setOwnedSkins(prev => {
+      if (prev.includes(skinId)) return prev;
+      const next = [...prev, skinId];
+      Storage.set(KEYS.OWNED_SKINS, next);
+      return next;
+    });
+  }, []);
+
+  const applySkin = useCallback(async (skinId: string) => {
+    if (!ownedSkins.includes(skinId)) return;
+    setActiveSkinId(skinId);
+    await Storage.set(KEYS.ACTIVE_SKIN, skinId);
+  }, [ownedSkins]);
+
+  const activeSkin = SKINS.find(s => s.id === activeSkinId) || SKINS[0];
+
+  return {
+    ownedSkins,
+    activeSkin,
+    activeSkinId,
+    unlockSkin,
+    applySkin,
+    allSkins: SKINS,
+  };
+};

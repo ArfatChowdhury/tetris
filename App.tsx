@@ -1,44 +1,72 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React, { useState, useCallback } from 'react';
+import { SafeAreaView, StatusBar, StyleSheet, View } from 'react-native';
+import { HomeScreen } from './src/screens/HomeScreen';
+import { GameScreen } from './src/screens/GameScreen';
+import { SkinShopScreen } from './src/screens/SkinShopScreen';
+import { GameOverScreen } from './src/screens/GameOverScreen';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+type Screen = 'home' | 'game' | 'shop' | 'gameover';
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+const App = () => {
+  const [currentScreen, setCurrentScreen] = useState<Screen>('home');
+  const [lastStats, setLastStats] = useState<any>(null);
+
+  const navigateTo = useCallback((screen: Screen) => {
+    setCurrentScreen(screen);
+  }, []);
+
+  const handleGameOver = useCallback((stats: any) => {
+    setLastStats(stats);
+    setCurrentScreen('gameover');
+  }, []);
+
+  const renderScreen = () => {
+    switch (currentScreen) {
+      case 'home':
+        return (
+          <HomeScreen
+            onPlay={() => navigateTo('game')}
+            onOpenShop={() => navigateTo('shop')}
+          />
+        );
+      case 'game':
+        return (
+          <GameScreen
+            onBack={() => navigateTo('home')}
+            onGameOver={handleGameOver}
+          />
+        );
+      case 'shop':
+        return (
+          <SkinShopScreen
+            onBack={() => navigateTo('home')}
+          />
+        );
+      case 'gameover':
+        return (
+          <GameOverScreen
+            stats={lastStats}
+            onRestart={() => navigateTo('game')}
+            onExit={() => navigateTo('home')}
+          />
+        );
+      default:
+        return <HomeScreen onPlay={() => navigateTo('game')} onOpenShop={() => navigateTo('shop')} />;
+    }
+  };
 
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      {renderScreen()}
+    </SafeAreaView>
   );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
   },
 });
 
