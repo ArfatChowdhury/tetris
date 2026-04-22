@@ -23,7 +23,7 @@ export const TetrisBoard: React.FC<TetrisBoardProps> = React.memo(({ board, curr
     // Add board blocks to mask
     board.forEach((row, y) => {
       row.forEach((cell, x) => {
-        if (cell !== 0) {
+        if (cell !== null) {
           rects.push(<Rect key={`m-board-${x}-${y}`} x={x * BLOCK_SIZE} y={y * BLOCK_SIZE} width={BLOCK_SIZE} height={BLOCK_SIZE} fill="white" />);
         }
       });
@@ -82,7 +82,7 @@ export const TetrisBoard: React.FC<TetrisBoardProps> = React.memo(({ board, curr
           <View key={`row-${y}`} style={styles.row}>
             {row.map((cell, x) => (
               <View key={`cell-${x}-${y}`} style={styles.cellWrapper}>
-                {cell !== 0 && (
+                {cell !== null && (
                   <TetrisBlock color={cell.color} skin={skin} />
                 )}
               </View>

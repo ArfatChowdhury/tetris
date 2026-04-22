@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
-import { SkinEngine } from '../components/skins/SkinEngine';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSkinStore } from '../hooks/useSkinStore';
 
 const { width } = Dimensions.get('window');
@@ -11,16 +11,19 @@ interface HomeScreenProps {
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({ onPlay, onOpenShop }) => {
-  const { activeSkinId } = useSkinStore();
 
   return (
     <View style={styles.container}>
-      <SkinEngine skinId={activeSkinId} />
+      <LinearGradient
+        colors={['#050510', '#0a0a1a', '#000000']}
+        style={StyleSheet.absoluteFillObject}
+      />
       
       <View style={styles.content}>
         <View style={styles.titleContainer}>
-          <Text style={styles.titlePrefix}>ULTIMATE</Text>
-          <Text style={styles.title}>TETRIS</Text>
+          <Text style={styles.titlePrefix}>CRYSTAL</Text>
+          <Text style={styles.title}>MOSAIC</Text>
+          <Text style={styles.titleSuffix}>TETRIS</Text>
           <View style={styles.titleUnderline} />
         </View>
 
@@ -58,26 +61,34 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   titlePrefix: {
-    color: 'rgba(255, 255, 255, 0.6)',
-    fontSize: 16,
-    fontWeight: 'bold',
-    letterSpacing: 4,
+    color: '#00ffff',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 8,
+    textShadowColor: 'rgba(0, 255, 255, 0.8)',
+    textShadowRadius: 15,
   },
   title: {
     color: '#fff',
-    fontSize: 60,
+    fontSize: 72,
     fontWeight: '900',
-    letterSpacing: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 2, height: 2 },
+    letterSpacing: -2,
+    marginTop: -10,
+  },
+  titleSuffix: {
+    color: '#deb887',
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: 12,
+    marginTop: -10,
+    textShadowColor: '#deb887',
     textShadowRadius: 10,
   },
   titleUnderline: {
-    width: 150,
-    height: 4,
-    backgroundColor: '#00f0f0',
-    marginTop: 10,
-    borderRadius: 2,
+    width: 200,
+    height: 2,
+    backgroundColor: 'rgba(222, 184, 135, 0.5)',
+    marginTop: 15,
   },
   menu: {
     width: '100%',
@@ -85,37 +96,40 @@ const styles = StyleSheet.create({
     gap: 20,
   },
   playButton: {
-    width: width * 0.6,
-    height: 60,
-    backgroundColor: '#fff',
-    borderRadius: 30,
+    width: width * 0.7,
+    height: 65,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 8,
+    overflow: 'hidden',
   },
   playButtonText: {
-    color: '#1a1a2e',
-    fontSize: 24,
+    color: '#fff',
+    fontSize: 28,
     fontWeight: '900',
+    letterSpacing: 4,
+    textShadowColor: 'rgba(0, 255, 255, 0.6)',
+    textShadowRadius: 15,
   },
   shopButton: {
-    width: width * 0.6,
-    height: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 30,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    width: width * 0.7,
+    height: 55,
+    backgroundColor: 'rgba(222, 184, 135, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(222, 184, 135, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 10,
   },
   shopButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: '#deb887',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 2,
   },
   footer: {
     alignItems: 'center',
@@ -127,9 +141,11 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   highScoreValue: {
-    color: '#ffb6c1', // Using a soft color for high score
-    fontSize: 24,
+    color: '#fff',
+    fontSize: 32,
     fontWeight: '900',
     marginTop: 5,
+    textShadowColor: '#deb887',
+    textShadowRadius: 10,
   },
 });

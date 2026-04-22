@@ -14,9 +14,10 @@ interface SidebarUIProps {
   revealPercentage: number;
   nextPiece: TetrominoType | null;
   skin: SkinDefinition;
+  width?: number;
 }
 
-export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revealPercentage, nextPiece, skin }) => {
+export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revealPercentage, nextPiece, skin, width }) => {
   const renderNextPiece = () => {
     if (!nextPiece) return null;
     const shape = TETROMINOES[nextPiece].shape;
@@ -43,7 +44,7 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, width ? { width } : undefined]}>
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>NEXT</Text>
       </View>
@@ -67,16 +68,19 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
       </View>
 
       <View style={styles.meterContainer}>
-        <Text style={styles.meterTitle}>REVEAL: {revealPercentage}%</Text>
+        <Text style={styles.meterLabel}>REVEAL</Text>
+        <Text style={styles.meterPercent}>{revealPercentage}%</Text>
         <View style={styles.meterGauge}>
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.1)', 'rgba(255, 255, 255, 0.05)']}
+            colors={['rgba(255, 255, 255, 0.05)', 'rgba(0, 0, 0, 0.2)']}
             style={StyleSheet.absoluteFillObject}
           />
           <LinearGradient
-            colors={['#00ffff', '#0044ff']}
+            colors={['#00ffff', '#0099ff', '#0044ff']}
             style={[styles.meterFill, { height: `${revealPercentage}%` }]}
           />
+          {/* Top liquid gleam */}
+          <View style={[styles.meterGleam, { bottom: `${revealPercentage}%` }]} />
         </View>
       </View>
     </View>
@@ -85,10 +89,9 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1,
     height: '100%',
     paddingVertical: 40,
-    paddingHorizontal: 15,
+    paddingHorizontal: 12,
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.4)',
     borderLeftWidth: 1,
@@ -130,31 +133,53 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: '#fff',
-    fontSize: 18,
-    fontFamily: 'monospace',
-    fontWeight: '800',
+    fontSize: 20,
+    fontWeight: '900',
+    textShadowColor: 'rgba(0, 255, 255, 0.3)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   meterContainer: {
     marginTop: 'auto',
     alignItems: 'center',
-    height: height * 0.3, // Liquid fill meter height
+    height: height * 0.28, 
   },
-  meterTitle: {
-    color: '#00ffff',
-    fontSize: 10,
+  meterLabel: {
+    color: '#deb887',
+    fontSize: 9,
     fontWeight: 'bold',
-    marginBottom: 10,
+    letterSpacing: 2,
+    marginBottom: 2,
+  },
+  meterPercent: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '900',
+    marginBottom: 8,
   },
   meterGauge: {
-    width: 15,
+    width: 14,
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(0, 255, 255, 0.3)',
-    borderRadius: 8,
+    borderColor: 'rgba(222, 184, 135, 0.3)',
+    borderRadius: 7,
     overflow: 'hidden',
     justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   meterFill: {
     width: '100%',
+    borderRadius: 7,
+  },
+  meterGleam: {
+    position: 'absolute',
+    width: '100%',
+    height: 4,
+    backgroundColor: '#fff',
+    opacity: 0.8,
+    shadowColor: '#fff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 1,
+    shadowRadius: 5,
   },
 });

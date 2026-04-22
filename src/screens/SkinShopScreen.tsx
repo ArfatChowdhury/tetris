@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   View,
   Text,
@@ -7,8 +6,9 @@ import {
   ScrollView,
   Dimensions,
   Alert,
+  Image,
 } from 'react-native';
-import { SkinEngine } from '../components/skins/SkinEngine';
+import LinearGradient from 'react-native-linear-gradient';
 import { useSkinStore } from '../hooks/useSkinStore';
 
 const { width } = Dimensions.get('window');
@@ -44,6 +44,11 @@ export const SkinShopScreen: React.FC<SkinShopScreenProps> = ({ onBack }) => {
 
   return (
     <View style={styles.container}>
+      <LinearGradient
+        colors={['#050510', '#0a0a1a', '#000000']}
+        style={StyleSheet.absoluteFillObject}
+      />
+      
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
           <Text style={styles.backBtnText}>←</Text>
@@ -59,9 +64,15 @@ export const SkinShopScreen: React.FC<SkinShopScreenProps> = ({ onBack }) => {
             const isActive = activeSkinId === skin.id;
 
             return (
-              <View key={skin.id} style={styles.card}>
+              <View key={skin.id} style={[styles.card, isActive && styles.activeCard]}>
                 <View style={styles.previewContainer}>
-                  <SkinEngine skinId={skin.id} />
+                  {skin.image ? (
+                    <Image source={skin.image} style={styles.previewImage} resizeMode="cover" />
+                  ) : (
+                    <View style={styles.placeholderPreview}>
+                      <Text style={styles.placeholderText}>{skin.preview}</Text>
+                    </View>
+                  )}
                   <View style={styles.premiumBadge}>
                     <Text style={styles.badgeText}>{skin.price === 0 ? 'FREE' : 'PREMIUM'}</Text>
                   </View>
@@ -103,8 +114,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingBottom: 25,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(222, 184, 135, 0.2)',
   },
   backBtn: {
     width: 40,
@@ -112,15 +124,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   backBtnText: {
-    color: '#fff',
-    fontSize: 30,
-    fontWeight: 'bold',
+    color: '#deb887',
+    fontSize: 24,
+    fontWeight: '900',
   },
   title: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
-    letterSpacing: 2,
+    letterSpacing: 4,
+    textShadowColor: '#deb887',
+    textShadowRadius: 10,
   },
   scrollContent: {
     padding: 15,
@@ -134,11 +148,19 @@ const styles = StyleSheet.create({
   },
   card: {
     width: (width - 45) / 2,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 15,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(222, 184, 135, 0.2)',
+  },
+  activeCard: {
+    borderColor: '#00ffff',
+    borderWidth: 2,
+    shadowColor: '#00ffff',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
   },
   previewContainer: {
     height: 150,
@@ -146,19 +168,32 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
+  previewImage: {
+    width: '100%',
+    height: '100%',
+  },
+  placeholderPreview: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#1a1a2e',
+  },
+  placeholderText: {
+    fontSize: 40,
+  },
   premiumBadge: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'rgba(222, 184, 135, 0.8)',
     paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
+    paddingVertical: 2,
   },
   badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: 'bold',
+    color: '#000',
+    fontSize: 9,
+    fontWeight: '900',
+    letterSpacing: 1,
   },
   cardInfo: {
     padding: 12,
@@ -166,35 +201,39 @@ const styles = StyleSheet.create({
   },
   skinName: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    fontSize: 14,
+    fontWeight: '900',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: 1,
   },
   actionBtn: {
     width: '100%',
-    height: 35,
-    borderRadius: 18,
+    height: 38,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
   buyBtn: {
-    backgroundColor: '#fff',
+    backgroundColor: '#deb887',
   },
   ownedBtn: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(222, 184, 135, 0.4)',
   },
   activeBtn: {
-    backgroundColor: '#00f0f0',
-    borderColor: '#00f0f0',
+    backgroundColor: 'rgba(0, 255, 255, 0.1)',
+    borderColor: '#00ffff',
+    borderWidth: 1,
   },
   actionBtnText: {
     color: '#000',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
+    letterSpacing: 1,
   },
   activeBtnText: {
-    color: '#fff',
+    color: '#00ffff',
   },
 });

@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions } from 'react-native';
 import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
-import { TetrisBoard } from '../components/TetrisBoard';
+import { runOnJS } from 'react-native-reanimated';
+import { MosaicCanvas } from '../components/MosaicCanvas';
 import { HoldPieceBox } from '../components/HoldPieceBox';
 import { SidebarUI } from '../components/SidebarUI';
-import { SkinEngine } from '../components/skins/SkinEngine';
+import { SIDEBAR_WIDTH } from '../components/TetrisBlock';
 import { useTetris } from '../hooks/useTetris';
 import { useSkinStore } from '../hooks/useSkinStore';
 import { TetrominoType } from '../constants/tetrominos';
@@ -23,7 +24,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
 
   const {
     board, currentPiece, ghostY, nextPieceType, holdPieceType,
-    score, level, lines, gameState,
+    revealMask, score, level, lines, gameState,
     onMoveLeft, onMoveRight, onMoveDown,
     onHardDrop, onRotateCW, onRotateCCW,
     onHold, onPause, onStart
@@ -41,22 +42,23 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
     }
   }, [gameState, score, level, lines, onGameOver]);
 
+  // revealPercentage based on PERMANENT reveals — only goes up, never back down
   const revealPercentage = useMemo(() => {
-    let filled = 0;
-    for (let y = 0; y < board.length; y++) {
-      for (let x = 0; x < board[y].length; x++) {
-        if (board[y][x] !== 0) filled++;
+    let revealed = 0;
+    for (let y = 0; y < revealMask.length; y++) {
+      for (let x = 0; x < revealMask[y].length; x++) {
+        if (revealMask[y][x]) revealed++;
       }
     }
     const maxBlocks = BOARD_WIDTH * BOARD_HEIGHT;
-    return Math.floor((filled / maxBlocks) * 100);
-  }, [board]);
+    return Math.floor((revealed / maxBlocks) * 100);
+  }, [revealMask]);
 
   // Gestures
   const tapLeft = Gesture.Tap()
     .numberOfTaps(1)
     .onStart(() => {
-      onRotateCCW();
+      runOnJS(onRotateCCW)();
     });
 
   const panGesture = Gesture.Pan()
@@ -64,22 +66,21 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
     .onUpdate((e) => {})
     .onEnd((e) => {
       if (Math.abs(e.velocityX) > Math.abs(e.velocityY)) {
-        if (e.translationX > 50) onMoveRight();
-        else if (e.translationX < -50) onMoveLeft();
+        if (e.translationX > 50) runOnJS(onMoveRight)();
+        else if (e.translationX < -50) runOnJS(onMoveLeft)();
       } else {
-        if (e.translationY > 50) onMoveDown();
-        else if (e.translationY < -50) onHardDrop();
+        if (e.translationY > 50) runOnJS(onMoveDown)();
+        else if (e.translationY < -50) runOnJS(onHardDrop)();
       }
     });
 
   const longPress = Gesture.LongPress()
     .onStart(() => {
-      onHold();
+      runOnJS(onHold)();
     });
 
   return (
     <GestureHandlerRootView style={styles.container}>
-      <SkinEngine skinId={activeSkinId} />
 
       <View style={styles.overlay}>
         {/* Top Header - Optional, for pause/hold */}
@@ -94,17 +95,18 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
           <View style={styles.boardContainer}>
             <GestureDetector gesture={Gesture.Race(panGesture, tapLeft, longPress)}>
               <View style={styles.gestureArea}>
-                <TetrisBoard
+                <MosaicCanvas
                   board={board}
                   currentPiece={currentPiece}
                   ghostY={ghostY}
+                  revealMask={revealMask}
                   skin={activeSkin}
                 />
               </View>
             </GestureDetector>
           </View>
 
-          {/* Right Sidebar */}
+          {/* Right Sidebar — fixed width so board doesn't overflow */}
           <SidebarUI
             score={score}
             level={level}
@@ -112,6 +114,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
             revealPercentage={revealPercentage}
             nextPiece={nextPieceType as TetrominoType}
             skin={activeSkin}
+            width={SIDEBAR_WIDTH}
           />
         </View>
 
@@ -175,7 +178,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   boardContainer: {
-    flex: 1,
+    width: '70%',
     alignItems: 'center',
     justifyContent: 'center',
   },

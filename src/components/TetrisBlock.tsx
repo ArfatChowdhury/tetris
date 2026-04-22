@@ -4,8 +4,9 @@ import { SkinDefinition } from '../constants/skins';
 import LinearGradient from 'react-native-linear-gradient';
 
 const { width } = Dimensions.get('window');
-// Reduce block size to 65% of screen width to leave room for the right sidebar
-export const BLOCK_SIZE = Math.floor((width * 0.65) / 10);
+// Fixed sidebar width budget. Board gets remaining 70%.
+export const SIDEBAR_WIDTH = Math.floor(width * 0.30);
+export const BLOCK_SIZE = Math.floor((width * 0.70 - 4) / 10);
 
 interface TetrisBlockProps {
   color: string;

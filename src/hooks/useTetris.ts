@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { Board, Piece, CellValue, TetrisEngine } from '../systems/TetrisEngine';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Board, Piece, TetrisEngine } from '../systems/TetrisEngine';
 import {
   BOARD_WIDTH,
   BOARD_HEIGHT,
@@ -10,205 +10,323 @@ import {
   MAX_LOCK_RESETS,
 } from '../constants/gameConfig';
 import { audio } from '../utils/audio';
+import { TetrominoType } from '../constants/tetrominos';
 
 export type GameState = 'idle' | 'playing' | 'paused' | 'gameover';
 
+/**
+ * useTetris — Refactored with useRef state mirrors to eliminate stale closures
+ * in the game loop. The key insight: setInterval callbacks capture a stale
+ * snapshot of all variables. By storing game state in refs and using setState
+ * callbacks (prev => ...), we always operate on fresh data.
+ */
 export const useTetris = (activeSkinId: string) => {
   const [board, setBoard] = useState<Board>(TetrisEngine.createEmptyBoard());
   const [currentPiece, setCurrentPiece] = useState<Piece | null>(null);
-  const [nextPieceType, setNextPieceType] = useState<string | null>(null);
-  const [holdPieceType, setHoldPieceType] = useState<string | null>(null);
+  const [nextPieceType, setNextPieceType] = useState<TetrominoType | null>(null);
+  const [holdPieceType, setHoldPieceType] = useState<TetrominoType | null>(null);
   const [canHold, setCanHold] = useState(true);
   const [score, setScore] = useState(0);
   const [level, setLevel] = useState(1);
   const [lines, setLines] = useState(0);
   const [gameState, setGameState] = useState<GameState>('idle');
   const [ghostY, setGhostY] = useState(0);
+  // Persistent reveal mask — only ever gains cells, never loses them
+  const [revealMask, setRevealMask] = useState<boolean[][]>(
+    () => Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(false))
+  );
 
-  const bagRef = useRef<string[]>([]);
+  // --- Mutable refs that always hold the latest value ---
+  // These break the stale closure problem in setInterval
+  const boardRef = useRef<Board>(TetrisEngine.createEmptyBoard());
+  const currentPieceRef = useRef<Piece | null>(null);
+  const nextPieceTypeRef = useRef<TetrominoType | null>(null);
+  const holdPieceTypeRef = useRef<TetrominoType | null>(null);
+  const canHoldRef = useRef(true);
+  const levelRef = useRef(1);
+  const linesRef = useRef(0);
+  const gameStateRef = useRef<GameState>('idle');
+  const activeSkinIdRef = useRef(activeSkinId);
+  const revealMaskRef = useRef<boolean[][]>(
+    Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(false))
+  );
+
+  // Keep refs in sync with state
+  useEffect(() => { boardRef.current = board; }, [board]);
+  useEffect(() => { currentPieceRef.current = currentPiece; }, [currentPiece]);
+  useEffect(() => { nextPieceTypeRef.current = nextPieceType; }, [nextPieceType]);
+  useEffect(() => { holdPieceTypeRef.current = holdPieceType; }, [holdPieceType]);
+  useEffect(() => { canHoldRef.current = canHold; }, [canHold]);
+  useEffect(() => { levelRef.current = level; }, [level]);
+  useEffect(() => { linesRef.current = lines; }, [lines]);
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  useEffect(() => { activeSkinIdRef.current = activeSkinId; }, [activeSkinId]);
+  useEffect(() => { revealMaskRef.current = revealMask; }, [revealMask]);
+
+  // Helper: permanently mark a piece's cells as revealed (never cleared)
+  const addPieceToRevealMask = (piece: Piece) => {
+    const next = revealMaskRef.current.map(row => [...row]);
+    piece.shape.forEach((row, dy) => {
+      row.forEach((cell, dx) => {
+        if (cell !== 0) {
+          const px = piece.x + dx;
+          const py = piece.y + dy;
+          if (py >= 0 && py < BOARD_HEIGHT && px >= 0 && px < BOARD_WIDTH) {
+            next[py][px] = true;
+          }
+        }
+      });
+    });
+    revealMaskRef.current = next;
+    setRevealMask(next);
+  };
+
+  // --- Timers ---
+  const bagRef = useRef<TetrominoType[]>([]);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
   const lockTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lockResetsRef = useRef(0);
-  const lastTickTimeRef = useRef(0);
 
-  const getNextPieceType = useCallback(() => {
+  // --- Internal helpers, all reading from refs, not state/closures ---
+
+  const getNextPieceType = (): TetrominoType => {
     if (bagRef.current.length === 0) {
-      bagRef.current = TetrisEngine.getNextBag();
+      bagRef.current = TetrisEngine.getNextBag() as TetrominoType[];
     }
-    return bagRef.current.pop() as any;
-  }, []);
+    return bagRef.current.pop() as TetrominoType;
+  };
 
-  const spawnPiece = useCallback((typeOverride?: any) => {
-    const type = typeOverride || (nextPieceType as any) || getNextPieceType();
+  const spawnPieceInternal = (board: Board, typeOverride?: TetrominoType) => {
+    const type = typeOverride ?? nextPieceTypeRef.current ?? getNextPieceType();
     const newNext = getNextPieceType();
+
     setNextPieceType(newNext);
+    nextPieceTypeRef.current = newNext;
 
     const piece = TetrisEngine.getInitialPiece(type);
-    
+
     if (!TetrisEngine.isValidMove(board, piece, 0, 0)) {
       setGameState('gameover');
+      gameStateRef.current = 'gameover';
       audio.play('game_over');
       return;
     }
 
     setCurrentPiece(piece);
+    currentPieceRef.current = piece;
     setGhostY(TetrisEngine.getGhostPosition(board, piece));
     setCanHold(true);
-  }, [board, nextPieceType, getNextPieceType]);
+    canHoldRef.current = true;
+  };
 
-  const lockPiece = useCallback(() => {
-    if (!currentPiece) return;
+  const lockPieceInternal = () => {
+    const piece = currentPieceRef.current;
+    const board = boardRef.current;
+    const currentLevel = levelRef.current;
+    const currentLines = linesRef.current;
+
+    if (!piece) return;
+
+    if (lockTimerRef.current) {
+      clearTimeout(lockTimerRef.current);
+      lockTimerRef.current = null;
+    }
 
     audio.play('piece_land');
-    const lockedBoard = TetrisEngine.lockPiece(board, currentPiece, activeSkinId);
+    // Permanently reveal the piece's cells BEFORE locking (so cleared rows keep their reveal)
+    addPieceToRevealMask(piece);
+    const lockedBoard = TetrisEngine.lockPiece(board, piece, activeSkinIdRef.current);
     const { newBoard, clearedRows } = TetrisEngine.clearFullRows(lockedBoard);
-    
+
     if (clearedRows.length > 0) {
       const lineScore = [0, SCORING.SINGLE, SCORING.DOUBLE, SCORING.TRIPLE, SCORING.TETRIS][clearedRows.length] || 0;
-      const multiplier = level;
-      const tspin = TetrisEngine.isTSpin(board, currentPiece);
-      
-      let finalScore = lineScore * multiplier;
-      if (tspin) {
-        finalScore += SCORING.TSPIN * multiplier;
-      }
-      
+      const tspin = TetrisEngine.isTSpin(board, piece);
+      let finalScore = lineScore * currentLevel;
+      if (tspin) finalScore += (SCORING.TSPIN ?? 400) * currentLevel;
+
       setScore(s => s + finalScore);
-      setLines(l => {
-        const nextLines = l + clearedRows.length;
-        if (Math.floor(nextLines / LINES_PER_LEVEL) > Math.floor(l / LINES_PER_LEVEL)) {
-          setLevel(lev => Math.min(lev + 1, 20));
-          audio.play('level_up');
-        }
-        return nextLines;
-      });
-      
+
+      const nextLines = currentLines + clearedRows.length;
+      setLines(nextLines);
+      linesRef.current = nextLines;
+
+      if (Math.floor(nextLines / LINES_PER_LEVEL) > Math.floor(currentLines / LINES_PER_LEVEL)) {
+        const newLevel = Math.min(currentLevel + 1, 20);
+        setLevel(newLevel);
+        levelRef.current = newLevel;
+        audio.play('level_up');
+      }
+
       audio.play(clearedRows.length === 4 ? 'line_clear_4' : 'line_clear_1');
     }
 
     setBoard(newBoard);
+    boardRef.current = newBoard;
     setCurrentPiece(null);
+    currentPieceRef.current = null;
     lockResetsRef.current = 0;
-    spawnPiece();
-  }, [board, currentPiece, activeSkinId, level, spawnPiece]);
 
-  const startLockTimer = useCallback(() => {
+    // Spawn next piece using the fresh board
+    spawnPieceInternal(newBoard);
+  };
+
+  const startLockTimer = () => {
     if (lockTimerRef.current) return;
     lockTimerRef.current = setTimeout(() => {
-      lockPiece();
       lockTimerRef.current = null;
+      lockPieceInternal();
     }, LOCK_DELAY);
-  }, [lockPiece]);
+  };
 
-  const resetLockTimer = useCallback(() => {
+  const resetLockTimer = () => {
     if (lockTimerRef.current && lockResetsRef.current < MAX_LOCK_RESETS) {
       clearTimeout(lockTimerRef.current);
       lockTimerRef.current = null;
       lockResetsRef.current++;
       startLockTimer();
     }
-  }, [startLockTimer]);
+  };
 
-  const movePiece = useCallback((dx: number, dy: number) => {
-    if (!currentPiece || gameState !== 'playing') return false;
+  // --- Public game actions (stable refs, safe to use in gesture handlers) ---
 
-    if (TetrisEngine.isValidMove(board, currentPiece, dx, dy)) {
-      setCurrentPiece(prev => {
-        if (!prev) return null;
-        const next = { ...prev, x: prev.x + dx, y: prev.y + dy };
-        setGhostY(TetrisEngine.getGhostPosition(board, next));
-        return next;
-      });
-      
+  const movePiece = useCallback((dx: number, dy: number): boolean => {
+    const piece = currentPieceRef.current;
+    const board = boardRef.current;
+
+    if (!piece || gameStateRef.current !== 'playing') return false;
+
+    if (TetrisEngine.isValidMove(board, piece, dx, dy)) {
+      const next = { ...piece, x: piece.x + dx, y: piece.y + dy };
+      setCurrentPiece(next);
+      currentPieceRef.current = next;
+      setGhostY(TetrisEngine.getGhostPosition(board, next));
+
       if (dy > 0) {
-        // Reset lock timer on downward move if we were already touching
-        if (!TetrisEngine.isValidMove(board, { ...currentPiece, x: currentPiece.x + dx, y: currentPiece.y + dy }, 0, 1)) {
+        // Just moved down — check if now resting on floor
+        if (!TetrisEngine.isValidMove(board, next, 0, 1)) {
           startLockTimer();
         }
       } else {
         resetLockTimer();
       }
-      
+
       if (dx !== 0) audio.play('piece_move');
       return true;
     }
 
+    // Move failed downward = piece is resting
     if (dy > 0 && !lockTimerRef.current) {
       startLockTimer();
     }
     return false;
-  }, [board, currentPiece, gameState, startLockTimer, resetLockTimer]);
+  }, []); // stable — reads only from refs
 
   const rotatePiece = useCallback((direction: 'CW' | 'CCW') => {
-    if (!currentPiece || gameState !== 'playing') return;
+    const piece = currentPieceRef.current;
+    const board = boardRef.current;
 
-    const rotated = TetrisEngine.rotatePiece(board, currentPiece, direction);
+    if (!piece || gameStateRef.current !== 'playing') return;
+
+    const rotated = TetrisEngine.rotatePiece(board, piece, direction);
     if (rotated) {
       setCurrentPiece(rotated);
+      currentPieceRef.current = rotated;
       setGhostY(TetrisEngine.getGhostPosition(board, rotated));
       resetLockTimer();
       audio.play('piece_rotate');
     }
-  }, [board, currentPiece, gameState, resetLockTimer]);
+  }, []); // stable
 
   const hardDrop = useCallback(() => {
-    if (!currentPiece || gameState !== 'playing') return;
+    const piece = currentPieceRef.current;
+    const board = boardRef.current;
 
-    const finalY = TetrisEngine.getGhostPosition(board, currentPiece);
-    const dropDist = finalY - currentPiece.y;
-    setScore(s => s + dropDist * SCORING.HARD_DROP);
-    
-    const droppedPiece = { ...currentPiece, y: finalY };
-    const lockedBoard = TetrisEngine.lockPiece(board, droppedPiece, activeSkinId);
-    const { newBoard, clearedRows } = TetrisEngine.clearFullRows(lockedBoard);
-    
-    // Simple version of lock logic to avoid double-processing
-    setBoard(newBoard);
-    setCurrentPiece(null);
-    lockResetsRef.current = 0;
+    if (!piece || gameStateRef.current !== 'playing') return;
+
     if (lockTimerRef.current) {
       clearTimeout(lockTimerRef.current);
       lockTimerRef.current = null;
     }
-    
-    // Handle scoring and lines... (Refactor common logic later if needed)
+
+    const finalY = TetrisEngine.getGhostPosition(board, piece);
+    const dropDist = finalY - piece.y;
+    setScore(s => s + dropDist * SCORING.HARD_DROP);
+
+    const droppedPiece = { ...piece, y: finalY };
+    // Permanently reveal the dropped piece's cells
+    addPieceToRevealMask(droppedPiece);
+    const lockedBoard = TetrisEngine.lockPiece(board, droppedPiece, activeSkinIdRef.current);
+    const { newBoard, clearedRows } = TetrisEngine.clearFullRows(lockedBoard);
+
+    setBoard(newBoard);
+    boardRef.current = newBoard;
+    setCurrentPiece(null);
+    currentPieceRef.current = null;
+    lockResetsRef.current = 0;
+
+    const currentLevel = levelRef.current;
+    const currentLines = linesRef.current;
+
     if (clearedRows.length > 0) {
-        audio.play(clearedRows.length === 4 ? 'line_clear_4' : 'line_clear_1');
-        setLines(l => l + clearedRows.length);
-        setScore(s => s + (([0, 100, 300, 500, 800][clearedRows.length] || 0) * level));
+      audio.play(clearedRows.length === 4 ? 'line_clear_4' : 'line_clear_1');
+      const nextLines = currentLines + clearedRows.length;
+      setLines(nextLines);
+      linesRef.current = nextLines;
+      if (Math.floor(nextLines / LINES_PER_LEVEL) > Math.floor(currentLines / LINES_PER_LEVEL)) {
+        const newLevel = Math.min(currentLevel + 1, 20);
+        setLevel(newLevel);
+        levelRef.current = newLevel;
+      }
+      setScore(s => s + (([0, 100, 300, 500, 800][clearedRows.length] || 0) * currentLevel));
     } else {
-        audio.play('piece_land');
+      audio.play('piece_land');
     }
-    
-    spawnPiece();
-  }, [board, currentPiece, gameState, activeSkinId, level, spawnPiece]);
+
+    spawnPieceInternal(newBoard);
+  }, []); // stable
 
   const holdPiece = useCallback(() => {
-    if (!currentPiece || !canHold || gameState !== 'playing') return;
+    const piece = currentPieceRef.current;
+    if (!piece || !canHoldRef.current || gameStateRef.current !== 'playing') return;
 
-    const typeToHold = currentPiece.type;
-    const typeToSpawn = holdPieceType;
+    const typeToHold = piece.type;
+    const typeToSpawn = holdPieceTypeRef.current;
 
     setHoldPieceType(typeToHold);
+    holdPieceTypeRef.current = typeToHold;
     setCanHold(false);
-    
-    if (typeToSpawn) {
-      spawnPiece(typeToSpawn);
-    } else {
-      spawnPiece();
-    }
-  }, [currentPiece, canHold, gameState, holdPieceType, spawnPiece]);
+    canHoldRef.current = false;
 
-  const tick = useCallback(() => {
-    if (gameState === 'playing') {
+    setCurrentPiece(null);
+    currentPieceRef.current = null;
+
+    if (lockTimerRef.current) {
+      clearTimeout(lockTimerRef.current);
+      lockTimerRef.current = null;
+    }
+
+    spawnPieceInternal(boardRef.current, typeToSpawn ?? undefined);
+  }, []); // stable
+
+  // --- Game Loop: reads from ref, always fresh ---
+  const tick = useRef(() => {
+    if (gameStateRef.current === 'playing') {
       movePiece(0, 1);
     }
-  }, [gameState, movePiece]);
+  });
+  // Keep the tick ref current if movePiece ever changes (it won't, but for safety)
+  useEffect(() => {
+    tick.current = () => {
+      if (gameStateRef.current === 'playing') {
+        movePiece(0, 1);
+      }
+    };
+  }, [movePiece]);
 
   useEffect(() => {
     if (gameState === 'playing') {
-      const speed = LEVEL_SPEEDS[level - 1] || 33;
-      gameLoopRef.current = setInterval(tick, speed);
+      const speed = LEVEL_SPEEDS[level - 1] ?? 800;
+      gameLoopRef.current = setInterval(() => tick.current(), speed);
     } else {
       if (gameLoopRef.current) clearInterval(gameLoopRef.current);
     }
@@ -216,20 +334,45 @@ export const useTetris = (activeSkinId: string) => {
       if (gameLoopRef.current) clearInterval(gameLoopRef.current);
       if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
     };
-  }, [gameState, level, tick]);
+  }, [gameState, level]);
 
   const startGame = useCallback(() => {
-    setBoard(TetrisEngine.createEmptyBoard());
+    const emptyBoard = TetrisEngine.createEmptyBoard();
+    setBoard(emptyBoard);
+    boardRef.current = emptyBoard;
     setScore(0);
     setLevel(1);
+    levelRef.current = 1;
     setLines(0);
-    setGameState('playing');
+    linesRef.current = 0;
+    setCurrentPiece(null);
+    currentPieceRef.current = null;
+    setHoldPieceType(null);
+    holdPieceTypeRef.current = null;
+    setCanHold(true);
+    canHoldRef.current = true;
     bagRef.current = [];
-    spawnPiece();
-  }, [spawnPiece]);
+    lockResetsRef.current = 0;
+    if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
+    lockTimerRef.current = null;
+
+    // Reset the reveal mask on new game
+    const emptyRevealMask = Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(false));
+    setRevealMask(emptyRevealMask);
+    revealMaskRef.current = emptyRevealMask;
+
+    setGameState('playing');
+    gameStateRef.current = 'playing';
+
+    spawnPieceInternal(emptyBoard);
+  }, []); // stable
 
   const pauseGame = useCallback(() => {
-    setGameState(prev => prev === 'playing' ? 'paused' : (prev === 'paused' ? 'playing' : prev));
+    setGameState(prev => {
+      const next = prev === 'playing' ? 'paused' : (prev === 'paused' ? 'playing' : prev);
+      gameStateRef.current = next;
+      return next;
+    });
   }, []);
 
   return {
@@ -238,16 +381,17 @@ export const useTetris = (activeSkinId: string) => {
     ghostY,
     nextPieceType,
     holdPieceType,
+    revealMask,
     score,
     level,
     lines,
     gameState,
-    onMoveLeft: () => movePiece(-1, 0),
-    onMoveRight: () => movePiece(1, 0),
-    onMoveDown: () => movePiece(0, 1),
+    onMoveLeft: useCallback(() => movePiece(-1, 0), [movePiece]),
+    onMoveRight: useCallback(() => movePiece(1, 0), [movePiece]),
+    onMoveDown: useCallback(() => movePiece(0, 1), [movePiece]),
     onHardDrop: hardDrop,
-    onRotateCW: () => rotatePiece('CW'),
-    onRotateCCW: () => rotatePiece('CCW'),
+    onRotateCW: useCallback(() => rotatePiece('CW'), [rotatePiece]),
+    onRotateCCW: useCallback(() => rotatePiece('CCW'), [rotatePiece]),
     onHold: holdPiece,
     onStart: startGame,
     onPause: pauseGame,

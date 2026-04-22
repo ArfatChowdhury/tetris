@@ -51,4 +51,32 @@ export const SKINS: SkinDefinition[] = [
     particleColor: '#90ee90',
     lineClearEffect: 'explode',
   },
+  {
+    id: 'vegeta_mosaic',
+    name: 'Cosmic Vegeta',
+    price: 199,
+    preview: '🌌',
+    image: require('../assets/images/vegeta_mosaic_bg.png'),
+    blockStyle: {
+      glow: true,
+      glass: true,
+      borderColor: 'rgba(120, 0, 255, 0.4)',
+    },
+    particleColor: '#8a2be2',
+    lineClearEffect: 'shatter',
+  },
+  {
+    id: 'villain_minion',
+    name: 'Villain Minion',
+    price: 149,
+    preview: '🦹',
+    image: require('../assets/images/villain_minion_bg.png'),
+    blockStyle: {
+      glow: true,
+      glass: true,
+      borderColor: 'rgba(255, 0, 0, 0.4)',
+    },
+    particleColor: '#ff0000',
+    lineClearEffect: 'dissolve',
+  },
 ];

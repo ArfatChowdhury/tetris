@@ -3,8 +3,8 @@ import { Storage, KEYS } from '../utils/storage';
 import { SKINS, SkinDefinition } from '../constants/skins';
 
 export const useSkinStore = () => {
-  const [ownedSkins, setOwnedSkins] = useState<string[]>(['default', 'cherry_blossom']);
-  const [activeSkinId, setActiveSkinId] = useState<string>('default');
+  const [ownedSkins, setOwnedSkins] = useState<string[]>(['goku_mosaic', 'minion_mosaic']);
+  const [activeSkinId, setActiveSkinId] = useState<string>('goku_mosaic');
 
   useEffect(() => {
     const loadSkins = async () => {
