@@ -68,14 +68,16 @@ const Sparkle = () => {
   const y = Math.random() * height;
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
     const trigger = () => {
       opacity.value = withSequence(
         withTiming(1, { duration: 500 }),
         withTiming(0, { duration: 500 })
       );
-      setTimeout(trigger, 2000 + Math.random() * 3000);
+      timeoutId = setTimeout(trigger, 2000 + Math.random() * 3000);
     };
     trigger();
+    return () => clearTimeout(timeoutId);
   }, []);
 
   const animatedStyle = useAnimatedStyle(() => ({

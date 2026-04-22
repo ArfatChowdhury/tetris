@@ -43,8 +43,8 @@ const Petal = ({ delay }: { delay: number }) => {
 
     horizontalSway.value = withRepeat(
       withSequence(
-        withTiming(40, { duration: 2000, easing: Easing.inOut(Easing.sine) }),
-        withTiming(-40, { duration: 2000, easing: Easing.inOut(Easing.sine) })
+        withTiming(40, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(-40, { duration: 2000, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       true

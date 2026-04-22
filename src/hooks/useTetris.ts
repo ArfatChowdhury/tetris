@@ -214,6 +214,7 @@ export const useTetris = (activeSkinId: string) => {
     }
     return () => {
       if (gameLoopRef.current) clearInterval(gameLoopRef.current);
+      if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
     };
   }, [gameState, level, tick]);
 

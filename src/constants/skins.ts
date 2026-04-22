@@ -14,8 +14,9 @@ export interface BlockStyle {
 export interface SkinDefinition {
   id: string;
   name: string;
-  price: number; // 0 = free, 99 = $0.99, 299 = $2.99
-  preview: string; // emoji or preview color
+  price: number;
+  preview: string;
+  image?: any; // require() image source for Mosaic
   blockStyle: BlockStyle;
   particleColor: string;
   lineClearEffect: LineClearEffect;
@@ -23,78 +24,31 @@ export interface SkinDefinition {
 
 export const SKINS: SkinDefinition[] = [
   {
-    id: 'default',
-    name: 'Default',
+    id: 'goku_mosaic',
+    name: 'Ultra Instinct',
     price: 0,
-    preview: '🔳',
-    blockStyle: {
-      borderRadius: 0,
-      borderWidth: 2,
-      borderColor: 'rgba(255, 255, 255, 0.8)',
-    },
-    particleColor: '#ffffff',
-    lineClearEffect: 'flash',
-  },
-  {
-    id: 'cherry_blossom',
-    name: 'Cherry Blossom',
-    price: 0,
-    preview: '🌸',
-    blockStyle: {
-      borderRadius: 4,
-      opacity: 0.9,
-    },
-    particleColor: '#ffb6c1',
-    lineClearEffect: 'dissolve',
-  },
-  {
-    id: 'galaxy',
-    name: 'Galaxy',
-    price: 99,
-    preview: '🌌',
+    preview: '⚡',
+    image: require('../assets/images/goku_mosaic_bg.png'),
     blockStyle: {
       glow: true,
-      borderColor: 'rgba(255, 255, 255, 0.3)',
+      glass: true,
+      borderColor: 'rgba(255, 255, 255, 0.4)',
     },
-    particleColor: '#ffffff',
-    lineClearEffect: 'explode',
-  },
-  {
-    id: 'anime_flower',
-    name: 'Anime Flower',
-    price: 99,
-    preview: '🌼',
-    blockStyle: {
-      borderRadius: 8,
-      opacity: 0.8,
-      borderColor: 'rgba(255, 255, 255, 0.5)',
-    },
-    particleColor: '#f5e6d5',
+    particleColor: '#00ffff',
     lineClearEffect: 'shatter',
   },
   {
-    id: 'neon_city',
-    name: 'Neon City',
+    id: 'minion_mosaic',
+    name: 'Master Minion',
     price: 99,
-    preview: '🌃',
+    preview: '🔬',
+    image: require('../assets/images/minion_mosaic_bg.png'),
     blockStyle: {
-      borderWidth: 3,
       glow: true,
-    },
-    particleColor: '#00ffff',
-    lineClearEffect: 'flash',
-  },
-  {
-    id: 'ocean',
-    name: 'Ocean',
-    price: 99,
-    preview: '🌊',
-    blockStyle: {
       glass: true,
-      opacity: 0.7,
-      borderRadius: 2,
+      borderColor: 'rgba(0, 255, 0, 0.4)',
     },
-    particleColor: '#a0dcff',
-    lineClearEffect: 'dissolve',
+    particleColor: '#90ee90',
+    lineClearEffect: 'explode',
   },
 ];

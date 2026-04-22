@@ -8,6 +8,7 @@ import Animated, {
   withSequence,
   interpolateColor,
   useDerivedValue,
+  Easing,
 } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import LinearGradient from 'react-native-linear-gradient';
@@ -54,7 +55,7 @@ export const GalaxySkin: React.FC = () => {
 
   useEffect(() => {
     progress.value = withRepeat(
-      withTiming(1, { duration: 8000, easing: (t) => t }),
+      withTiming(1, { duration: 8000, easing: Easing.linear }),
       -1,
       true
     );

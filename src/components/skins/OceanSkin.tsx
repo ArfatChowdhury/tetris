@@ -34,8 +34,8 @@ const Bubble = () => {
 
     sway.value = withRepeat(
       withSequence(
-        withTiming(15, { duration: 1000, easing: Easing.inOut(Easing.sine) }),
-        withTiming(-15, { duration: 1000, easing: Easing.inOut(Easing.sine) })
+        withTiming(15, { duration: 1000, easing: Easing.inOut(Easing.sin) }),
+        withTiming(-15, { duration: 1000, easing: Easing.inOut(Easing.sin) })
       ),
       -1,
       true

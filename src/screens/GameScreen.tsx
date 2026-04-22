@@ -1,14 +1,14 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions } from 'react-native';
 import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { TetrisBoard } from '../components/TetrisBoard';
-import { NextPiecePreview } from '../components/NextPiecePreview';
 import { HoldPieceBox } from '../components/HoldPieceBox';
-import { GameHUD } from '../components/GameHUD';
+import { SidebarUI } from '../components/SidebarUI';
 import { SkinEngine } from '../components/skins/SkinEngine';
 import { useTetris } from '../hooks/useTetris';
 import { useSkinStore } from '../hooks/useSkinStore';
 import { TetrominoType } from '../constants/tetrominos';
+import { BOARD_WIDTH, BOARD_HEIGHT } from '../constants/gameConfig';
 
 const { width } = Dimensions.get('window');
 
@@ -41,6 +41,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
     }
   }, [gameState, score, level, lines, onGameOver]);
 
+  const revealPercentage = useMemo(() => {
+    let filled = 0;
+    for (let y = 0; y < board.length; y++) {
+      for (let x = 0; x < board[y].length; x++) {
+        if (board[y][x] !== 0) filled++;
+      }
+    }
+    const maxBlocks = BOARD_WIDTH * BOARD_HEIGHT;
+    return Math.floor((filled / maxBlocks) * 100);
+  }, [board]);
+
   // Gestures
   const tapLeft = Gesture.Tap()
     .numberOfTaps(1)
@@ -49,12 +60,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
     });
 
   const panGesture = Gesture.Pan()
-    .onStart((e) => {
-      // Logic for movement based on velocity/distance if needed
-    })
-    .onUpdate((e) => {
-        // Simplified gesture handling for now
-    })
+    .onStart((e) => {})
+    .onUpdate((e) => {})
     .onEnd((e) => {
       if (Math.abs(e.velocityX) > Math.abs(e.velocityY)) {
         if (e.translationX > 50) onMoveRight();
@@ -73,18 +80,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
   return (
     <GestureHandlerRootView style={styles.container}>
       <SkinEngine skinId={activeSkinId} />
-      
+
       <View style={styles.overlay}>
-        <GameHUD score={score} level={level} lines={lines} />
+        {/* Top Header - Optional, for pause/hold */}
+        <View style={styles.topBar}>
+          <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
+          <TouchableOpacity style={styles.pauseButton} onPress={onPause}>
+            <Text style={styles.pauseText}>{gameState === 'paused' ? '▶' : 'II'}</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.gameArea}>
-          <View style={styles.sideBar}>
-            <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
-            <TouchableOpacity style={styles.pauseButton} onPress={onPause}>
-              <Text style={styles.pauseText}>{gameState === 'paused' ? '▶' : 'II'}</Text>
-            </TouchableOpacity>
-          </View>
-
           <View style={styles.boardContainer}>
             <GestureDetector gesture={Gesture.Race(panGesture, tapLeft, longPress)}>
               <View style={styles.gestureArea}>
@@ -98,12 +104,18 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
             </GestureDetector>
           </View>
 
-          <View style={styles.sideBar}>
-            <NextPiecePreview type={nextPieceType as TetrominoType} skin={activeSkin} />
-          </View>
+          {/* Right Sidebar */}
+          <SidebarUI
+            score={score}
+            level={level}
+            lines={lines}
+            revealPercentage={revealPercentage}
+            nextPiece={nextPieceType as TetrominoType}
+            skin={activeSkin}
+          />
         </View>
 
-        {/* On-screen Buttons for players who prefer them */}
+        {/* On-screen Buttons */}
         <View style={styles.controls}>
           <View style={styles.leftControls}>
             <TouchableOpacity style={styles.controlBtn} onPress={onMoveLeft}>
@@ -113,10 +125,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
               <Text style={styles.btnText}>→</Text>
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.centerControls}>
             <TouchableOpacity style={styles.hardDropBtn} onPress={onHardDrop}>
-                <Text style={styles.hardDropText}>DROP</Text>
+              <Text style={styles.hardDropText}>DROP</Text>
             </TouchableOpacity>
           </View>
 
@@ -149,20 +161,23 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
   },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    marginTop: 40,
+  },
   gameArea: {
     flex: 1,
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingTop: 10,
-  },
-  sideBar: {
-    paddingHorizontal: 5,
-    alignItems: 'center',
-    width: 90,
   },
   boardContainer: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   gestureArea: {
     flex: 1,
@@ -171,17 +186,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   pauseButton: {
-    width: 50,
-    height: 50,
+    width: 40,
+    height: 40,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 25,
+    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 20,
   },
   pauseText: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: 'bold',
   },
   controls: {
@@ -195,7 +209,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   rightControls: {
-    //
+    // Empty
   },
   centerControls: {
     justifyContent: 'center',
