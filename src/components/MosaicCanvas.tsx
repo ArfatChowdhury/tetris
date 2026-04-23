@@ -41,15 +41,16 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
     const backgroundImage = useImage(skin.image);
 
-    // --- Mask path: Derived from persistent revealMask ---
-    // This drives Layer 1 (full-vivid image reveal) and never goes backwards
+    // --- Dynamic Mask path: Derived from CURRENT board state + currentPiece ---
+    // The image ONLY shows where blocks exist. When a row clears, the image clears.
     const settledMaskPath = useMemo(() => {
       const path = Skia.Path.Make();
-      revealMask.forEach((row, y) => {
+      
+      // 1. Add settled blocks from board
+      board.forEach((row, y) => {
         if (!row) return;
-        row.forEach((isRevealed, x) => {
-          if (isRevealed) {
-            // Apply a 1px inset so the vivid image doesn't bleed into the block joints
+        row.forEach((cell, x) => {
+          if (cell !== null) {
             path.addRRect({
               rect: {
                 x: x * BLOCK_SIZE + 1,
@@ -63,8 +64,33 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           }
         });
       });
+
+      // 2. Add active falling piece to mask (Optional: helps see what you are placing)
+      if (currentPiece) {
+        currentPiece.shape.forEach((row, dy) => {
+          row.forEach((cell, dx) => {
+            if (cell !== 0) {
+              const px = currentPiece.x + dx;
+              const py = currentPiece.y + dy;
+              if (py >= 0) {
+                path.addRRect({
+                  rect: {
+                    x: px * BLOCK_SIZE + 1,
+                    y: py * BLOCK_SIZE + 1,
+                    width: BLOCK_SIZE - 2,
+                    height: BLOCK_SIZE - 2,
+                  },
+                  rx: CORNER_RADIUS,
+                  ry: CORNER_RADIUS,
+                });
+              }
+            }
+          });
+        });
+      }
+
       return path;
-    }, [revealMask]);
+    }, [board, currentPiece]);
 
     // --- Settled glass blocks list ---
     const settledBlocks = useMemo(() => {
@@ -116,14 +142,24 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
     return (
       <Canvas style={{ width: canvasW, height: canvasH }}>
+        {/* ── ATMOSPHERIC BASE: The "Glass Plinth" — Gives the board a heavy, premium feel ── */}
+        <Rect x={0} y={0} width={canvasW} height={canvasH} color="#050810" />
+        <Rect x={0} y={0} width={canvasW} height={canvasH}>
+          <LinearGradient
+            start={vec(0, 0)}
+            end={vec(canvasW, canvasH)}
+            colors={['#0A1020', '#050810']}
+          />
+        </Rect>
+
         {/* ── DIAGNOSTIC FALLBACK: If image fails to load, show red background ── */}
         {!backgroundImage && (
           <Rect x={0} y={0} width={canvasW} height={canvasH} color="#FF00324D" />
         )}
 
-        {/* ── LAYER 0: Dim base image — always visible across whole board ── */}
+        {/* ── LAYER 0: Faint Background Context — Just enough to feel the glass theme ── */}
         {backgroundImage && (
-          <Group opacity={0.15}>
+          <Group opacity={0.03}>
             <Image
               image={backgroundImage}
               x={0}
@@ -235,7 +271,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
               r={0}
               color="transparent"
             >
-              <Paint style="stroke" strokeWidth={0.5} color="#FFFFFF1A" />
+              <Paint style="stroke" strokeWidth={0.5} color="#FFFFFF0A" blendMode="screen" />
             </RoundedRect>
           ))
         )}

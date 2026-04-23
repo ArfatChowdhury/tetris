@@ -44,15 +44,18 @@ const styles = StyleSheet.create({
     marginVertical: 10,
   },
   title: {
-    color: '#fff',
-    fontSize: 14,
+    color: '#deb887', // Match Sidebar header color
+    fontSize: 12,
     fontWeight: 'bold',
+    letterSpacing: 1,
     marginBottom: 5,
   },
   previewBox: {
     padding: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
     minWidth: 80,
     minHeight: 80,
     justifyContent: 'center',

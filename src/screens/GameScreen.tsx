@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions } from 'react-native';
+import LinearGradient from 'react-native-linear-gradient';
 import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
 import { runOnJS } from 'react-native-reanimated';
 import { MosaicCanvas } from '../components/MosaicCanvas';
@@ -81,10 +82,20 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
 
   return (
     <GestureHandlerRootView style={styles.container}>
+      <LinearGradient
+        colors={['#020408', '#050a18', '#0a1025']}
+        style={StyleSheet.absoluteFillObject}
+      />
+      
+      {/* Soft Ambient Glow behind the board */}
+      <View style={styles.ambientGlow} />
 
       <View style={styles.overlay}>
         {/* Top Header - Optional, for pause/hold */}
         <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Text style={styles.backButtonText}>←</Text>
+          </TouchableOpacity>
           <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
           <TouchableOpacity style={styles.pauseButton} onPress={onPause}>
             <Text style={styles.pauseText}>{gameState === 'paused' ? '▶' : 'II'}</Text>
@@ -149,6 +160,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
           <TouchableOpacity style={styles.resumeBtn} onPress={onPause}>
             <Text style={styles.resumeText}>RESUME</Text>
           </TouchableOpacity>
+          <TouchableOpacity style={styles.quitBtn} onPress={onBack}>
+            <Text style={styles.quitText}>QUIT GAME</Text>
+          </TouchableOpacity>
         </View>
       )}
     </GestureHandlerRootView>
@@ -158,7 +172,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+  },
+  ambientGlow: {
+    position: 'absolute',
+    top: '25%',
+    left: '15%',
+    width: '50%',
+    height: '50%',
+    backgroundColor: 'rgba(0, 150, 255, 0.05)',
+    borderRadius: 200,
+    transform: [{ scaleX: 1.5 }],
   },
   overlay: {
     flex: 1,
@@ -178,9 +201,18 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   boardContainer: {
-    width: '70%',
+    width: '72%',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
   },
   gestureArea: {
     flex: 1,
@@ -272,6 +304,37 @@ const styles = StyleSheet.create({
   resumeText: {
     color: '#000',
     fontSize: 20,
+    fontWeight: 'bold',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  backButtonText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  quitBtn: {
+    marginTop: 20,
+    width: 200,
+    height: 50,
+    backgroundColor: 'rgba(255, 50, 50, 0.2)',
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 50, 50, 0.5)',
+  },
+  quitText: {
+    color: '#ff5555',
+    fontSize: 16,
     fontWeight: 'bold',
   },
 });
