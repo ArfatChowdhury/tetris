@@ -9,6 +9,7 @@ export interface BlockStyle {
   opacity?: number;
   glow?: boolean;
   glass?: boolean;
+  led?: boolean;
 }
 
 export interface SkinDefinition {
@@ -38,6 +39,20 @@ export const SKINS: SkinDefinition[] = [
     lineClearEffect: 'shatter',
   },
   {
+    id: 'goku_aura',
+    name: 'Super Saiyan Aura',
+    price: 499,
+    preview: '🌩️',
+    image: require('../assets/images/goku_mosaic_bg.png'),
+    blockStyle: {
+      glow: true,
+      glass: true,
+      borderColor: 'rgba(0, 255, 255, 0.4)',
+    },
+    particleColor: '#00ffff',
+    lineClearEffect: 'shatter',
+  },
+  {
     id: 'minion_mosaic',
     name: 'Master Minion',
     price: 99,
@@ -46,6 +61,7 @@ export const SKINS: SkinDefinition[] = [
     blockStyle: {
       glow: true,
       glass: true,
+      led: true,
       borderColor: 'rgba(0, 255, 0, 0.4)',
     },
     particleColor: '#90ee90',

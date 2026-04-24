@@ -11,6 +11,8 @@ import { useTetris } from '../hooks/useTetris';
 import { useSkinStore } from '../hooks/useSkinStore';
 import { TetrominoType } from '../constants/tetrominos';
 import { BOARD_WIDTH, BOARD_HEIGHT } from '../constants/gameConfig';
+import { ThunderOverlay } from '../components/ThunderOverlay';
+import { ContinuousAuraOverlay } from '../components/ContinuousAuraOverlay';
 
 const { width } = Dimensions.get('window');
 
@@ -157,6 +159,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
                 />
               </View>
             </GestureDetector>
+
+            {/* ── EXCLUSIVE SKIN OVERLAYS ── */}
+            {activeSkinId === 'goku_aura' && <ContinuousAuraOverlay />}
           </View>
 
           {/* Right Sidebar — fixed width so board doesn't overflow */}

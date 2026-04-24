@@ -55,7 +55,11 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
       {flashOpacity && lightningImage && (
         <View style={[StyleSheet.absoluteFill, { zIndex: -1 }]} pointerEvents="none">
           <Canvas style={{ flex: 1 }}>
-            <Group opacity={flashOpacity} blendMode="screen">
+            <Group 
+              opacity={flashOpacity} 
+              blendMode="screen"
+              transform={[{ translateY: height / 2 }, { scaleY: -1 }, { translateY: -height / 2 }]}
+            >
               <Image
                 image={lightningImage}
                 x={0}

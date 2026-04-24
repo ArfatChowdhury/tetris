@@ -63,6 +63,12 @@ export const TetrisBlock: React.FC<TetrisBlockProps> = React.memo(({ color, isGh
           end={{ x: 1, y: 1 }}
         />
       )}
+      {/* LED Pixel Grid Overlay */}
+      {skin.blockStyle.led && !isGhost && (
+        <View style={StyleSheet.absoluteFill}>
+          <View style={styles.ledGrid} />
+        </View>
+      )}
     </View>
   );
 });
@@ -70,5 +76,12 @@ export const TetrisBlock: React.FC<TetrisBlockProps> = React.memo(({ color, isGh
 const styles = StyleSheet.create({
   block: {
     margin: 0,
+    overflow: 'hidden',
+  },
+  ledGrid: {
+    ...StyleSheet.absoluteFillObject,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0, 255, 0, 0.1)',
+    opacity: 0.5,
   },
 });

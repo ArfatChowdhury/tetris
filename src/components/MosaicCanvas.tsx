@@ -262,6 +262,31 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                   colors={['#FFFFFF99', '#FFFFFF00']}
                 />
               </RoundedRect>
+
+              {/* ── LED TV STYLE (Exclusive to LED skins) ── */}
+              {skin.blockStyle.led && (
+                <Group>
+                  {/* Subtle Scanlines */}
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Rect
+                      key={`scanline-${i}`}
+                      x={bx + 2}
+                      y={by + 4 + i * (BLOCK_SIZE / 4)}
+                      width={BLOCK_SIZE - 4}
+                      height={0.8}
+                      color="rgba(0, 255, 0, 0.15)"
+                    />
+                  ))}
+                  {/* RGB Subpixel "Dots" */}
+                  <Rect
+                    x={bx + BLOCK_SIZE / 2 - 1}
+                    y={by + BLOCK_SIZE / 2 - 1}
+                    width={2}
+                    height={2}
+                    color="rgba(255, 255, 255, 0.4)"
+                  />
+                </Group>
+              )}
             </Group>
           );
         })}
