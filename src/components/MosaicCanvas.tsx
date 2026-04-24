@@ -11,11 +11,13 @@ import {
   BlurMask,
   vec,
   Path,
+  ColorMatrix,
   Skia,
 } from '@shopify/react-native-skia';
 import { Board, Piece } from '../systems/TetrisEngine';
 import { SkinDefinition } from '../constants/skins';
 import { BLOCK_SIZE } from './TetrisBlock';
+import { useParallax } from '../hooks/useParallax';
 
 interface MosaicCanvasProps {
   board: Board;
@@ -26,6 +28,13 @@ interface MosaicCanvasProps {
 }
 
 const CORNER_RADIUS = 4;
+
+const BLACK_AND_WHITE = [
+  0.2126, 0.7152, 0.0722, 0, 0,
+  0.2126, 0.7152, 0.0722, 0, 0,
+  0.2126, 0.7152, 0.0722, 0, 0,
+  0,      0,      0,      1, 0,
+];
 
 export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
   ({ board, currentPiece, ghostY, revealMask, skin }) => {
@@ -40,6 +49,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     const canvasH = ROWS * BLOCK_SIZE;
 
     const backgroundImage = useImage(skin.image);
+    const { parallaxX, parallaxY } = useParallax();
 
     // --- Dynamic Mask path: Derived from CURRENT board state + currentPiece ---
     // The image ONLY shows where blocks exist. When a row clears, the image clears.
@@ -157,13 +167,14 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           <Rect x={0} y={0} width={canvasW} height={canvasH} color="#FF00324D" />
         )}
 
-        {/* ── LAYER 0: Faint Background Context — Just enough to feel the glass theme ── */}
+        {/* ── LAYER 0: Faint, Bleak Black & White Background ── */}
         {backgroundImage && (
-          <Group opacity={0.03}>
+          <Group opacity={0.15}>
+            <ColorMatrix matrix={BLACK_AND_WHITE} />
             <Image
               image={backgroundImage}
-              x={0}
-              y={0}
+              x={parallaxX}
+              y={parallaxY}
               width={canvasW}
               height={canvasH}
               fit="cover"
@@ -176,8 +187,8 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           <Group clip={settledMaskPath}>
             <Image
               image={backgroundImage}
-              x={0}
-              y={0}
+              x={parallaxX}
+              y={parallaxY}
               width={canvasW}
               height={canvasH}
               fit="cover"
@@ -186,70 +197,55 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         )}
 
 
-        {/* ── LAYER 2: Glass crystal overlays on settled blocks ── */}
+        {/* ── LAYER 2: Glass crystal overlays on settled blocks (MINECRAFT 3D EXTRUDED STYLE) ── */}
         {settledBlocks.map(({ x, y }) => {
           const bx = x * BLOCK_SIZE;
           const by = y * BLOCK_SIZE;
           return (
             <Group key={`glass-${x}-${y}`}>
-              {/* Frosted glass base — slightly dark wash to create depth, but clear enough for vivid image */}
+              {/* High-Clarity Center — Almost fully transparent to see the parallax image clearly */}
               <RoundedRect
                 x={bx + 1} y={by + 1}
                 width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
-                r={CORNER_RADIUS}
-                color="#0000000D"
+                r={0}
+                color="#00000008"
               />
 
-              {/* Top specular highlight */}
+              {/* ── 3D BEVELS ── */}
+              {/* Top bevel (Strong light) */}
+              <Path 
+                path={`M ${bx+1} ${by+1} L ${bx+BLOCK_SIZE-1} ${by+1} L ${bx+BLOCK_SIZE-4} ${by+4} L ${bx+4} ${by+4} Z`} 
+                color="#FFFFFFCC" 
+              />
+              {/* Left bevel (Medium light) */}
+              <Path 
+                path={`M ${bx+1} ${by+1} L ${bx+4} ${by+4} L ${bx+4} ${by+BLOCK_SIZE-4} L ${bx+1} ${by+BLOCK_SIZE-1} Z`} 
+                color="#FFFFFF66" 
+              />
+              {/* Bottom bevel (Deep shadow) */}
+              <Path 
+                path={`M ${bx+1} ${by+BLOCK_SIZE-1} L ${bx+4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-1} ${by+BLOCK_SIZE-1} Z`} 
+                color="#000000B3" 
+              />
+              {/* Right bevel (Medium shadow) */}
+              <Path 
+                path={`M ${bx+BLOCK_SIZE-1} ${by+1} L ${bx+BLOCK_SIZE-4} ${by+4} L ${bx+BLOCK_SIZE-4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-1} ${by+BLOCK_SIZE-1} Z`} 
+                color="#00000066" 
+              />
+
+              {/* ── DYNAMIC GLARE (Moves slightly based on accelerometer parallax) ── */}
+              {/* We map the specular start/end points using parallax for physical glare */}
               <RoundedRect
-                x={bx + 2} y={by + 2}
-                width={BLOCK_SIZE - 4} height={(BLOCK_SIZE - 4) * 0.4}
-                r={CORNER_RADIUS - 1}
+                x={bx + 4} y={by + 4}
+                width={BLOCK_SIZE - 8} height={(BLOCK_SIZE - 8) * 0.4}
+                r={0}
                 blendMode="screen"
               >
                 <LinearGradient
-                  start={vec(bx + 2, by + 2)}
-                  end={vec(bx + 2, by + (BLOCK_SIZE - 4) * 0.4)}
+                  start={vec(bx + 4, by + 4)}
+                  end={vec(bx + 4, by + (BLOCK_SIZE - 8) * 0.4)}
                   colors={['#FFFFFF99', '#FFFFFF00']}
                 />
-              </RoundedRect>
-
-              {/* Bottom subtle shine */}
-              <RoundedRect
-                x={bx + 2} y={by + BLOCK_SIZE * 0.68}
-                width={BLOCK_SIZE - 4} height={BLOCK_SIZE * 0.28}
-                r={CORNER_RADIUS - 1}
-                blendMode="screen"
-              >
-                <LinearGradient
-                  start={vec(bx + 2, by + BLOCK_SIZE * 0.68)}
-                  end={vec(bx + 2, by + BLOCK_SIZE)}
-                  colors={['#FFFFFF00', '#FFFFFF2E']}
-                />
-              </RoundedRect>
-
-              {/* Prismatic iridescent border — simulates light refraction at the edges */}
-              <RoundedRect
-                x={bx + 1} y={by + 1}
-                width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
-                r={CORNER_RADIUS}
-                blendMode="screen"
-                color="transparent"
-              >
-                <Paint style="stroke" strokeWidth={2.0} color="#FFFFFFB3">
-                  <LinearGradient
-                    start={vec(bx, by)}
-                    end={vec(bx + BLOCK_SIZE, by + BLOCK_SIZE)}
-                    colors={[
-                      '#DCF0FFE6', // Soft Blue
-                      '#A0D2FF99', // Sky Blue
-                      '#C8A0FF80', // Lavender
-                      '#FFC88C59', // Peach
-                      '#FFFFFF00', // Clear gap
-                      '#DCF0FFE6',
-                    ]}
-                  />
-                </Paint>
               </RoundedRect>
             </Group>
           );
@@ -309,13 +305,15 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                 <BlurMask blur={9} style="outer" respectCTM={false} />
               </RoundedRect>
 
-              {/* Crystal body — near-transparent */}
+              {/* Crystal body — pulsing energy feel */}
               <RoundedRect
                 x={bx + 2} y={by + 2}
                 width={BLOCK_SIZE - 4} height={BLOCK_SIZE - 4}
                 r={CORNER_RADIUS - 1}
-                color="#82E1FF2E"
-              />
+                color="#00E5FF4D"
+              >
+                <BlurMask blur={2} style="normal" />
+              </RoundedRect>
 
               {/* Top specular shine */}
               <RoundedRect

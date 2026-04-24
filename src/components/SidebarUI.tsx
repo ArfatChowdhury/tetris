@@ -54,34 +54,36 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
 
       <View style={styles.statBox}>
         <Text style={styles.statLabel}>SCORE</Text>
-        <Text style={styles.statValue}>{score.toLocaleString()}</Text>
-      </View>
-
-      <View style={styles.statBox}>
-        <Text style={styles.statLabel}>ROWS CLEARED</Text>
-        <Text style={styles.statValue}>{lines}</Text>
+        <View style={styles.glassCard}>
+          <Text style={styles.statValue}>{score.toLocaleString()}</Text>
+        </View>
       </View>
 
       <View style={styles.statBox}>
         <Text style={styles.statLabel}>LEVEL</Text>
-        <Text style={styles.statValue}>{level}</Text>
+        <View style={styles.glassCard}>
+          <Text style={styles.statValue}>{level}</Text>
+        </View>
       </View>
 
       <View style={styles.meterContainer}>
         <Text style={styles.meterLabel}>REVEAL</Text>
-        <Text style={styles.meterPercent}>{revealPercentage}%</Text>
         <View style={styles.meterGauge}>
+          {/* 10% Tick Marks */}
+          {Array.from({ length: 9 }).map((_, i) => (
+            <View 
+              key={`tick-${i}`} 
+              style={[styles.meterTick, { bottom: `${(i + 1) * 10}%` }]} 
+            />
+          ))}
           <LinearGradient
-            colors={['rgba(255, 255, 255, 0.05)', 'rgba(0, 0, 0, 0.2)']}
-            style={StyleSheet.absoluteFillObject}
-          />
-          <LinearGradient
-            colors={['#00ffff', '#0099ff', '#0044ff']}
+            colors={['#004E92', '#00E5FF']}
             style={[styles.meterFill, { height: `${revealPercentage}%` }]}
           />
           {/* Top liquid gleam */}
           <View style={[styles.meterGleam, { bottom: `${revealPercentage}%` }]} />
         </View>
+        <Text style={styles.meterPercent}>{revealPercentage}%</Text>
       </View>
     </View>
   );
@@ -90,31 +92,31 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
 const styles = StyleSheet.create({
   container: {
     height: '100%',
-    paddingVertical: 40,
+    paddingVertical: 30,
     paddingHorizontal: 12,
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
-    borderLeftWidth: 1,
-    borderLeftColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'transparent',
   },
   sectionHeader: {
-    marginBottom: 5,
+    marginBottom: 8,
   },
   sectionTitle: {
-    color: '#deb887', // Golden hue matching premium UI concept
-    fontSize: 12,
-    fontWeight: 'bold',
-    letterSpacing: 1,
+    color: '#00BEFF',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 2,
+    textShadowColor: '#00BEFF80',
+    textShadowRadius: 4,
   },
   previewBox: {
-    width: 65,
-    height: 65,
+    width: 60,
+    height: 60,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    marginBottom: 25,
+    borderColor: '#ffffff22',
+    borderRadius: 8,
+    marginBottom: 20,
     backgroundColor: 'rgba(255, 255, 255, 0.05)',
     overflow: 'hidden',
   },
@@ -123,64 +125,80 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statBox: {
+    width: '100%',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
+  },
+  glassCard: {
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: '#ffffff22',
+    borderRadius: 6,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginTop: 4,
   },
   statLabel: {
-    color: '#deb887',
-    fontSize: 10,
+    color: '#ffffff80',
+    fontSize: 9,
     fontWeight: 'bold',
-    letterSpacing: 0.5,
+    letterSpacing: 1.5,
   },
   statValue: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: '900',
-    textShadowColor: 'rgba(0, 255, 255, 0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
   },
   meterContainer: {
     marginTop: 'auto',
     alignItems: 'center',
-    height: height * 0.28, 
+    height: height * 0.35, 
+    width: '100%',
   },
   meterLabel: {
-    color: '#deb887',
+    color: '#00BEFF',
     fontSize: 9,
-    fontWeight: 'bold',
+    fontWeight: '900',
     letterSpacing: 2,
-    marginBottom: 2,
+    marginBottom: 10,
   },
   meterPercent: {
-    color: '#fff',
-    fontSize: 14,
+    color: '#00E5FF',
+    fontSize: 12,
     fontWeight: '900',
-    marginBottom: 8,
+    marginTop: 8,
   },
   meterGauge: {
-    width: 14,
+    width: 12,
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(222, 184, 135, 0.3)',
-    borderRadius: 7,
+    borderColor: '#ffffff22',
+    borderRadius: 2,
     overflow: 'hidden',
     justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: '#0A0F1E',
+  },
+  meterTick: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 1,
+    backgroundColor: '#ffffff15',
+    zIndex: 1,
   },
   meterFill: {
     width: '100%',
-    borderRadius: 7,
   },
   meterGleam: {
     position: 'absolute',
     width: '100%',
-    height: 4,
-    backgroundColor: '#fff',
-    opacity: 0.8,
-    shadowColor: '#fff',
+    height: 2,
+    backgroundColor: '#00E5FF',
+    zIndex: 2,
+    shadowColor: '#00E5FF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
-    shadowRadius: 5,
+    shadowRadius: 10,
   },
 });
