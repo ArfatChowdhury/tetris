@@ -101,18 +101,22 @@ export class TetrisEngine {
   }
 
   static rotateShape(shape: number[][], direction: 'CW' | 'CCW'): number[][] {
-    const size = shape.length;
-    const newShape = Array.from({ length: size }, () => Array(size).fill(0));
-    for (let y = 0; y < size; y++) {
-      for (let x = 0; x < size; x++) {
-        if (direction === 'CW') {
-          newShape[x][size - 1 - y] = shape[y][x];
-        } else {
-          newShape[size - 1 - x][y] = shape[y][x];
-        }
-      }
+    const rows = shape.length;
+    const cols = shape[0].length;
+
+    if (direction === 'CW') {
+      return Array.from({ length: cols }, (_, newRow) =>
+        Array.from({ length: rows }, (_, newCol) =>
+          shape[rows - 1 - newCol][newRow]
+        )
+      );
+    } else {
+      return Array.from({ length: cols }, (_, newRow) =>
+        Array.from({ length: rows }, (_, newCol) =>
+          shape[newCol][cols - 1 - newRow]
+        )
+      );
     }
-    return newShape;
   }
 
   static rotatePiece(board: Board, piece: Piece, direction: 'CW' | 'CCW'): Piece | null {
@@ -147,20 +151,30 @@ export class TetrisEngine {
     return piece.y + offsetY;
   }
 
-  static lockPiece(board: Board, piece: Piece, skinId: string): Board {
+  static lockPiece(
+    board: Board, 
+    piece: Piece, 
+    skinId: string
+  ): { newBoard: Board; isTopOut: boolean } {
     const newBoard = board.map(row => [...row]);
+    let isTopOut = false;
+
     piece.shape.forEach((row, y) => {
       row.forEach((value, x) => {
         if (value) {
           const boardY = piece.y + y;
           const boardX = piece.x + x;
-          if (boardY >= 0 && boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
+          if (boardY < 0) {
+            isTopOut = true;
+            return;
+          }
+          if (boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
             newBoard[boardY][boardX] = { color: piece.color, skinId };
           }
         }
       });
     });
-    return newBoard;
+    return { newBoard, isTopOut };
   }
 
   static clearFullRows(board: Board): { newBoard: Board; clearedRows: number[] } {
@@ -180,19 +194,25 @@ export class TetrisEngine {
 
   static isTSpin(board: Board, piece: Piece): boolean {
     if (piece.type !== 'T') return false;
-    
-    // T-Spin requires 3 out of 4 corners to be occupied
+
     const corners = [
-      [0, 0], [2, 0], [0, 2], [2, 2]
+      [0, 0], [2, 0],
+      [0, 2], [2, 2]
     ];
-    let count = 0;
+    let blockedCount = 0;
+
     corners.forEach(([cx, cy]) => {
       const bx = piece.x + cx;
       const by = piece.y + cy;
-      if (bx < 0 || bx >= BOARD_WIDTH || by >= BOARD_HEIGHT || (by >= 0 && board[by][bx])) {
-        count++;
+
+      const isOutOfBounds = bx < 0 || bx >= BOARD_WIDTH || by >= BOARD_HEIGHT;
+      const isOccupied = !isOutOfBounds && by >= 0 && board[by][bx] !== null;
+
+      if (isOutOfBounds || isOccupied) {
+        blockedCount++;
       }
     });
-    return count >= 3;
+
+    return blockedCount >= 3;
   }
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet, TouchableOpacity, Text, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import { runOnJS, useSharedValue, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { MosaicCanvas } from '../components/MosaicCanvas';
 import { HoldPieceBox } from '../components/HoldPieceBox';
 import { SidebarUI } from '../components/SidebarUI';
@@ -42,6 +42,47 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
       onGameOver({ score, level, lines });
     }
   }, [gameState, score, level, lines, onGameOver]);
+
+  // --- Cinematic Lightning Strobe Engine ---
+  const flashOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    let isActive = true;
+    let timeoutId: NodeJS.Timeout;
+
+    if (activeSkinId !== 'goku_mosaic') {
+      flashOpacity.value = 0;
+      return;
+    }
+
+    const triggerLightning = () => {
+      if (!isActive) return;
+
+      const nextStrikeIn = Math.random() * 4000 + 1000;
+      
+      const flash = () => {
+        if (!isActive) return;
+        // The classic lightning strobe effect: spike -> dip -> spike -> fade
+        flashOpacity.value = withSequence(
+          withTiming(1.0, { duration: 40, easing: Easing.out(Easing.ease) }),
+          withTiming(0.2, { duration: 60 }),
+          withTiming(0.8, { duration: 50 }),
+          withTiming(0, { duration: 600, easing: Easing.in(Easing.ease) })
+        );
+        timeoutId = setTimeout(triggerLightning, nextStrikeIn);
+      };
+
+      timeoutId = setTimeout(flash, nextStrikeIn);
+    };
+
+    triggerLightning();
+
+    return () => {
+      isActive = false;
+      clearTimeout(timeoutId);
+      flashOpacity.value = 0;
+    };
+  }, [activeSkinId, flashOpacity]);
 
   // revealPercentage based on PERMANENT reveals — only goes up, never back down
   const revealPercentage = useMemo(() => {
@@ -112,6 +153,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
                   ghostY={ghostY}
                   revealMask={revealMask}
                   skin={activeSkin}
+                  flashOpacity={flashOpacity}
                 />
               </View>
             </GestureDetector>
@@ -126,6 +168,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
             nextPiece={nextPieceType as TetrominoType}
             skin={activeSkin}
             width={SIDEBAR_WIDTH}
+            flashOpacity={flashOpacity}
           />
         </View>
 

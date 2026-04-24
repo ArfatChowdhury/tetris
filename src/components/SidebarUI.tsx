@@ -4,6 +4,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import { SkinDefinition } from '../constants/skins';
 import { TetrisBlock, BLOCK_SIZE as BASE_BLOCK_SIZE } from './TetrisBlock';
 import { TetrominoType, TETROMINOES } from '../constants/tetrominos';
+import { Canvas, Image, useImage, Group } from '@shopify/react-native-skia';
+import { SharedValue } from 'react-native-reanimated';
 
 const { height } = Dimensions.get('window');
 
@@ -15,9 +17,12 @@ interface SidebarUIProps {
   nextPiece: TetrominoType | null;
   skin: SkinDefinition;
   width?: number;
+  flashOpacity?: SharedValue<number>;
 }
 
-export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revealPercentage, nextPiece, skin, width }) => {
+export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revealPercentage, nextPiece, skin, width, flashOpacity }) => {
+  const lightningImage = useImage(require('../assets/images/dbz_lightning_strike.png'));
+
   const renderNextPiece = () => {
     if (!nextPiece) return null;
     const shape = TETROMINOES[nextPiece].shape;
@@ -45,6 +50,25 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
 
   return (
     <View style={[styles.container, width ? { width } : undefined]}>
+      
+      {/* ── CINEMATIC LIGHTNING FLASH ── */}
+      {flashOpacity && lightningImage && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: -1 }]} pointerEvents="none">
+          <Canvas style={{ flex: 1 }}>
+            <Group opacity={flashOpacity} blendMode="screen">
+              <Image
+                image={lightningImage}
+                x={0}
+                y={0}
+                width={width || 120}
+                height={height}
+                fit="cover"
+              />
+            </Group>
+          </Canvas>
+        </View>
+      )}
+
       <View style={styles.sectionHeader}>
         <Text style={styles.sectionTitle}>NEXT</Text>
       </View>

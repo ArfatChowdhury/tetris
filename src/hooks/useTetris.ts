@@ -135,7 +135,15 @@ export const useTetris = (activeSkinId: string) => {
     audio.play('piece_land');
     // Permanently reveal the piece's cells BEFORE locking (so cleared rows keep their reveal)
     addPieceToRevealMask(piece);
-    const lockedBoard = TetrisEngine.lockPiece(board, piece, activeSkinIdRef.current);
+    const { newBoard: lockedBoard, isTopOut } = TetrisEngine.lockPiece(board, piece, activeSkinIdRef.current);
+
+    if (isTopOut) {
+      setGameState('gameover');
+      gameStateRef.current = 'gameover';
+      audio.play('game_over');
+      return;
+    }
+
     const { newBoard, clearedRows } = TetrisEngine.clearFullRows(lockedBoard);
 
     if (clearedRows.length > 0) {
@@ -255,7 +263,15 @@ export const useTetris = (activeSkinId: string) => {
     const droppedPiece = { ...piece, y: finalY };
     // Permanently reveal the dropped piece's cells
     addPieceToRevealMask(droppedPiece);
-    const lockedBoard = TetrisEngine.lockPiece(board, droppedPiece, activeSkinIdRef.current);
+    const { newBoard: lockedBoard, isTopOut } = TetrisEngine.lockPiece(board, droppedPiece, activeSkinIdRef.current);
+
+    if (isTopOut) {
+      setGameState('gameover');
+      gameStateRef.current = 'gameover';
+      audio.play('game_over');
+      return;
+    }
+
     const { newBoard, clearedRows } = TetrisEngine.clearFullRows(lockedBoard);
 
     setBoard(newBoard);

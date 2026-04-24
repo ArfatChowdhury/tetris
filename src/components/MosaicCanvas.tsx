@@ -25,6 +25,7 @@ interface MosaicCanvasProps {
   ghostY: number;
   revealMask: boolean[][];
   skin: SkinDefinition;
+  flashOpacity?: SharedValue<number>;
 }
 
 const CORNER_RADIUS = 4;
@@ -37,7 +38,7 @@ const BLACK_AND_WHITE = [
 ];
 
 export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
-  ({ board, currentPiece, ghostY, revealMask, skin }) => {
+  ({ board, currentPiece, ghostY, revealMask, skin, flashOpacity }) => {
     // Super safety check for all critical props
     if (!board || !board[0] || !revealMask || !revealMask[0]) {
       return null;
@@ -171,6 +172,20 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         {backgroundImage && (
           <Group opacity={0.15}>
             <ColorMatrix matrix={BLACK_AND_WHITE} />
+            <Image
+              image={backgroundImage}
+              x={parallaxX}
+              y={parallaxY}
+              width={canvasW}
+              height={canvasH}
+              fit="cover"
+            />
+          </Group>
+        )}
+
+        {/* ── LAYER 0.5: Cinematic Room Flash (Synchronized with Sidebar Lightning) ── */}
+        {backgroundImage && flashOpacity && (
+          <Group opacity={flashOpacity} blendMode="screen">
             <Image
               image={backgroundImage}
               x={parallaxX}
