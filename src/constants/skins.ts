@@ -10,6 +10,8 @@ export interface BlockStyle {
   glow?: boolean;
   glass?: boolean;
   led?: boolean;
+  magnifier?: boolean;
+  breathing?: boolean;
 }
 
 export interface SkinDefinition {
@@ -90,9 +92,26 @@ export const SKINS: SkinDefinition[] = [
     blockStyle: {
       glow: true,
       glass: true,
+      magnifier: true,
       borderColor: 'rgba(255, 0, 0, 0.4)',
     },
     particleColor: '#ff0000',
+    lineClearEffect: 'dissolve',
+  },
+  {
+    id: 'samurai_embers',
+    name: 'Crimson Samurai',
+    price: 699,
+    preview: '🔥',
+    image: require('../assets/images/samurai_embers_bg.png'),
+    blockStyle: {
+      glow: true,
+      glass: true,
+      breathing: true,
+      magnifier: true,
+      borderColor: 'rgba(255, 50, 0, 0.4)',
+    },
+    particleColor: '#ff4500',
     lineClearEffect: 'dissolve',
   },
 ];

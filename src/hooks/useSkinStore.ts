@@ -3,7 +3,7 @@ import { Storage, KEYS } from '../utils/storage';
 import { SKINS, SkinDefinition } from '../constants/skins';
 
 export const useSkinStore = () => {
-  const [ownedSkins, setOwnedSkins] = useState<string[]>(['goku_mosaic', 'minion_mosaic']);
+  const [ownedSkins, setOwnedSkins] = useState<string[]>(['goku_mosaic', 'minion_mosaic', 'samurai_embers']);
   const [activeSkinId, setActiveSkinId] = useState<string>('goku_mosaic');
 
   useEffect(() => {

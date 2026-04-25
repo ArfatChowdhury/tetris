@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
+import { useSharedValue, withRepeat, withTiming, Easing, useDerivedValue } from 'react-native-reanimated';
 import {
   Canvas,
   Image,
@@ -13,6 +14,7 @@ import {
   Path,
   ColorMatrix,
   Skia,
+  Circle,
 } from '@shopify/react-native-skia';
 import { Board, Piece } from '../systems/TetrisEngine';
 import { SkinDefinition } from '../constants/skins';
@@ -37,6 +39,32 @@ const BLACK_AND_WHITE = [
   0,      0,      0,      1, 0,
 ];
 
+interface AshParticleProps {
+  x: number;
+  y: number;
+  size: number;
+  speed: number;
+  wobble: number;
+  time: Animated.SharedValue<number>;
+  canvasH: number;
+}
+
+const AshParticle: React.FC<AshParticleProps> = ({ x, y, size, speed, wobble, time, canvasH }) => {
+  const cx = useDerivedValue(() => {
+    return x + Math.sin(time.value * 0.005 + wobble) * 15;
+  });
+  const cy = useDerivedValue(() => {
+    const currentY = y - time.value * speed;
+    return ((currentY % canvasH) + canvasH) % canvasH;
+  });
+
+  return (
+    <Circle cx={cx} cy={cy} r={size} color="#FF6600">
+      <BlurMask blur={3} style="normal" />
+    </Circle>
+  );
+};
+
 export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
   ({ board, currentPiece, ghostY, revealMask, skin, flashOpacity }) => {
     // Super safety check for all critical props
@@ -52,6 +80,45 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     const backgroundImage = useImage(skin.image);
     const { parallaxX, parallaxY } = useParallax();
 
+    // --- Breathing Embers Engine ---
+    const emberBreath = useSharedValue(0.1);
+    
+    useEffect(() => {
+      if (skin.blockStyle.breathing) {
+        // Slow, 3-second inhale/exhale physics loop
+        emberBreath.value = withRepeat(
+          withTiming(0.85, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
+          -1, // Infinite loops
+          true // Reverse (ping-pong)
+        );
+      } else {
+        emberBreath.value = 0;
+      }
+    }, [skin.blockStyle.breathing, emberBreath]);
+
+    // --- Ash Particle Engine ---
+    const ashTime = useSharedValue(0);
+    useEffect(() => {
+      if (skin.blockStyle.breathing) {
+        ashTime.value = withRepeat(
+          withTiming(5000, { duration: 60000, easing: Easing.linear }),
+          -1,
+          false
+        );
+      }
+    }, [skin.blockStyle.breathing, ashTime]);
+
+    const ashParticles = useMemo(() => {
+      return Array.from({ length: 25 }).map((_, i) => ({
+        id: i,
+        x: Math.random() * canvasW,
+        y: Math.random() * canvasH,
+        size: Math.random() * 2 + 1,
+        speed: Math.random() * 0.4 + 0.2,
+        wobble: Math.random() * Math.PI * 2,
+      }));
+    }, [canvasW, canvasH]);
+
     // --- Dynamic Mask path: Derived from CURRENT board state + currentPiece ---
     // The image ONLY shows where blocks exist. When a row clears, the image clears.
     const settledMaskPath = useMemo(() => {
@@ -62,16 +129,25 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         if (!row) return;
         row.forEach((cell, x) => {
           if (cell !== null) {
-            path.addRRect({
-              rect: {
-                x: x * BLOCK_SIZE + 1,
-                y: y * BLOCK_SIZE + 1,
-                width: BLOCK_SIZE - 2,
-                height: BLOCK_SIZE - 2,
-              },
-              rx: CORNER_RADIUS,
-              ry: CORNER_RADIUS,
-            });
+            if (skin.blockStyle.magnifier) {
+              path.addRect({
+                x: x * BLOCK_SIZE,
+                y: y * BLOCK_SIZE,
+                width: BLOCK_SIZE,
+                height: BLOCK_SIZE,
+              });
+            } else {
+              path.addRRect({
+                rect: {
+                  x: x * BLOCK_SIZE + 1,
+                  y: y * BLOCK_SIZE + 1,
+                  width: BLOCK_SIZE - 2,
+                  height: BLOCK_SIZE - 2,
+                },
+                rx: CORNER_RADIUS,
+                ry: CORNER_RADIUS,
+              });
+            }
           }
         });
       });
@@ -84,16 +160,25 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
               const px = currentPiece.x + dx;
               const py = currentPiece.y + dy;
               if (py >= 0) {
-                path.addRRect({
-                  rect: {
-                    x: px * BLOCK_SIZE + 1,
-                    y: py * BLOCK_SIZE + 1,
-                    width: BLOCK_SIZE - 2,
-                    height: BLOCK_SIZE - 2,
-                  },
-                  rx: CORNER_RADIUS,
-                  ry: CORNER_RADIUS,
-                });
+                if (skin.blockStyle.magnifier) {
+                  path.addRect({
+                    x: px * BLOCK_SIZE,
+                    y: py * BLOCK_SIZE,
+                    width: BLOCK_SIZE,
+                    height: BLOCK_SIZE,
+                  });
+                } else {
+                  path.addRRect({
+                    rect: {
+                      x: px * BLOCK_SIZE + 1,
+                      y: py * BLOCK_SIZE + 1,
+                      width: BLOCK_SIZE - 2,
+                      height: BLOCK_SIZE - 2,
+                    },
+                    rx: CORNER_RADIUS,
+                    ry: CORNER_RADIUS,
+                  });
+                }
               }
             }
           });
@@ -197,6 +282,34 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           </Group>
         )}
 
+        {/* ── LAYER 0.75: Breathing Embers (Continuous Heat Pulse) ── */}
+        {backgroundImage && skin.blockStyle.breathing && (
+          <Group opacity={emberBreath} blendMode="screen">
+            <Image
+              image={backgroundImage}
+              x={parallaxX}
+              y={parallaxY}
+              width={canvasW}
+              height={canvasH}
+              fit="cover"
+            />
+          </Group>
+        )}
+
+        {/* ── LAYER 0.8: Ash Particles ── */}
+        {skin.blockStyle.breathing && ashParticles.map((p) => (
+          <AshParticle
+            key={p.id}
+            x={p.x}
+            y={p.y}
+            size={p.size}
+            speed={p.speed}
+            wobble={p.wobble}
+            time={ashTime}
+            canvasH={canvasH}
+          />
+        ))}
+
         {/* ── LAYER 1: Vivid image — revealed only through the permanent revealMask ── */}
         {backgroundImage && (
           <Group clip={settledMaskPath}>
@@ -208,6 +321,36 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
               height={canvasH}
               fit="cover"
             />
+          </Group>
+        )}
+
+        {/* ── LAYER 1.5: Magnifier Effect (Zoomed background through blocks) ── */}
+        {backgroundImage && skin.blockStyle.magnifier && (
+          <Group clip={settledMaskPath}>
+            {/* Base Darkened Magnifier */}
+            <Group transform={[{ scale: 2.0 }]} opacity={0.3}>
+              <Image
+                image={backgroundImage}
+                x={parallaxX - (canvasW * 0.5)} 
+                y={parallaxY - (canvasH * 0.5)}
+                width={canvasW}
+                height={canvasH}
+                fit="cover"
+              />
+            </Group>
+            {/* Pulsing Heat Magnifier */}
+            {skin.blockStyle.breathing && (
+              <Group transform={[{ scale: 2.0 }]} opacity={emberBreath} blendMode="screen">
+                <Image
+                  image={backgroundImage}
+                  x={parallaxX - (canvasW * 0.5)} 
+                  y={parallaxY - (canvasH * 0.5)}
+                  width={canvasW}
+                  height={canvasH}
+                  fit="cover"
+                />
+              </Group>
+            )}
           </Group>
         )}
 
@@ -369,15 +512,25 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                 />
               </RoundedRect>
 
-              {/* Crystal border */}
-              <RoundedRect
-                x={bx + 1} y={by + 1}
-                width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
-                r={CORNER_RADIUS}
-                color="transparent"
-              >
-                <Paint style="stroke" strokeWidth={1.5} color="#64E1FFEB" blendMode="screen" />
-              </RoundedRect>
+              {/* Crystal border / Minecraft White Outline */}
+              {skin.blockStyle.magnifier ? (
+                <Rect
+                  x={bx} y={by}
+                  width={BLOCK_SIZE} height={BLOCK_SIZE}
+                  color="transparent"
+                >
+                  <Paint style="stroke" strokeWidth={1} color="rgba(255, 255, 255, 0.8)" />
+                </Rect>
+              ) : (
+                <RoundedRect
+                  x={bx + 1} y={by + 1}
+                  width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                  r={CORNER_RADIUS}
+                  color="transparent"
+                >
+                  <Paint style="stroke" strokeWidth={1.5} color="#64E1FFEB" blendMode="screen" />
+                </RoundedRect>
+              )}
             </Group>
           );
         })}
