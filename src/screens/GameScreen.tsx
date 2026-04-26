@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Dimensions } from 'react-native';
+import { View, StyleSheet, Text, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
-import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-gesture-handler';
+import { GestureHandlerRootView, GestureDetector, Gesture, TouchableOpacity } from 'react-native-gesture-handler';
 import { runOnJS, useSharedValue, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { MosaicCanvas } from '../components/MosaicCanvas';
 import { HoldPieceBox } from '../components/HoldPieceBox';
@@ -59,12 +59,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
 
     const triggerLightning = () => {
       if (!isActive) return;
-
       const nextStrikeIn = Math.random() * 4000 + 1000;
-      
       const flash = () => {
         if (!isActive) return;
-        // The classic lightning strobe effect: spike -> dip -> spike -> fade
         flashOpacity.value = withSequence(
           withTiming(1.0, { duration: 40, easing: Easing.out(Easing.ease) }),
           withTiming(0.2, { duration: 60 }),
@@ -73,12 +70,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
         );
         timeoutId = setTimeout(triggerLightning, nextStrikeIn);
       };
-
       timeoutId = setTimeout(flash, nextStrikeIn);
     };
 
     triggerLightning();
-
     return () => {
       isActive = false;
       clearTimeout(timeoutId);
@@ -86,7 +81,6 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
     };
   }, [activeSkinId, flashOpacity]);
 
-  // revealPercentage based on PERMANENT reveals — only goes up, never back down
   const revealPercentage = useMemo(() => {
     let revealed = 0;
     for (let y = 0; y < revealMask.length; y++) {
@@ -94,16 +88,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
         if (revealMask[y][x]) revealed++;
       }
     }
-    const maxBlocks = BOARD_WIDTH * BOARD_HEIGHT;
-    return Math.floor((revealed / maxBlocks) * 100);
+    return Math.floor((revealed / (BOARD_WIDTH * BOARD_HEIGHT)) * 100);
   }, [revealMask]);
 
-  // Full-Screen Gestures
+  // ── GESTURES ──
   const tap = Gesture.Tap()
     .numberOfTaps(1)
-    .onStart(() => {
-      runOnJS(onRotateCW)();
-    });
+    .onStart(() => { runOnJS(onRotateCW)(); });
 
   const panGesture = Gesture.Pan()
     .onEnd((e) => {
@@ -118,183 +109,179 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
 
   const longPress = Gesture.LongPress()
     .minDuration(150)
-    .onStart(() => {
-      runOnJS(onSoftDropStart)();
-    })
-    .onEnd(() => {
-      runOnJS(onSoftDropEnd)();
-    })
-    .onFinalize(() => {
-      runOnJS(onSoftDropEnd)();
-    });
+    .onStart(() => { runOnJS(onSoftDropStart)(); })
+    .onEnd(() => { runOnJS(onSoftDropEnd)(); })
+    .onFinalize(() => { runOnJS(onSoftDropEnd)(); });
 
-  if (!isLoaded) {
-    return <View style={styles.container} />; // Show nothing while loading skin from storage
-  }
+  if (!isLoaded) return <View style={styles.container} />;
+
+  const isNeumorphic = activeSkin.uiStyle === 'neumorphic';
+  const isKawaii    = activeSkin.uiStyle === 'kawaii';
+  const isSoft      = isNeumorphic || isKawaii;
+  const primaryColor   = activeSkin.colors?.primary   || '#fff';
+  const secondaryColor = activeSkin.colors?.secondary || '#aaa';
+  const accentColor    = activeSkin.colors?.accent    || '#fff';
+  const statColor  = isSoft ? primaryColor : accentColor;
+  const labelColor = isSoft ? secondaryColor : 'rgba(255,255,255,0.45)';
+  const dividerColor = isSoft ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
 
   return (
     <GestureHandlerRootView style={styles.container}>
+
+      {/* ── BACKGROUND ── */}
       <LinearGradient
         colors={
-          activeSkin.colors?.background || 
-          (activeSkin.uiStyle === 'neumorphic' ? ['#FFF0F5', '#FFC0CB', '#FFF0F5'] : ['#020408', '#050a18', '#0a1025'])
+          activeSkin.colors?.background ||
+          (isSoft ? ['#FFF0F5', '#FFC0CB', '#FFF0F5'] : ['#020408', '#050a18', '#0a1025'])
         }
         style={StyleSheet.absoluteFillObject}
       />
-      
-      {/* Soft Ambient Glow behind the board */}
-      <View style={styles.ambientGlow} />
 
-      {/* ── GLOBAL LIGHTNING STRIKE (BEHIND THE BOARD) ── */}
       {activeSkinId === 'goku_mosaic' && <ThunderOverlay flashOpacity={flashOpacity} />}
 
-      <View style={styles.overlay}>
-        <GestureDetector gesture={Gesture.Race(panGesture, tap, longPress)}>
-          <View style={styles.gestureAreaFullScreen}>
-            
-              <View style={styles.headerHud}>
-                {activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && (
-                  <LinearGradient
-                    colors={['rgba(0,0,0,0.9)', 'transparent']}
-                    style={StyleSheet.absoluteFillObject}
-                  />
-                )}
-                <View style={styles.headerTopRow}>
-                  <TouchableOpacity style={[
-                    styles.iconBtn, 
-                    activeSkin.uiStyle === 'neumorphic' && styles.iconBtnNeumorphic,
-                    activeSkin.uiStyle === 'kawaii' && styles.iconBtnKawaii
-                  ]} onPress={onBack}>
-                    <Text style={[
-                      styles.iconText, 
-                      activeSkin.uiStyle === 'neumorphic' && styles.iconTextNeumorphic,
-                      activeSkin.uiStyle === 'kawaii' && styles.iconTextKawaii
-                    ]}>◁</Text>
-                  </TouchableOpacity>
-                  
-                  <View style={styles.statsCenter}>
-                    <Text style={[
-                      styles.scoreText, 
-                      activeSkin.uiStyle === 'neumorphic' && styles.scoreTextNeumorphic,
-                      activeSkin.uiStyle === 'kawaii' && styles.scoreTextKawaii,
-                      activeSkin.colors && { color: activeSkin.colors.accent, textShadowColor: activeSkin.uiStyle === 'neumorphic' || activeSkin.uiStyle === 'kawaii' ? 'transparent' : activeSkin.colors.primary }
-                    ]}>
-                      {score.toLocaleString()}
-                    </Text>
-                    <Text style={[
-                      styles.levelText, 
-                      activeSkin.uiStyle === 'neumorphic' && styles.levelTextNeumorphic,
-                      activeSkin.uiStyle === 'kawaii' && styles.levelTextKawaii,
-                      activeSkin.colors && { color: activeSkin.colors.primary }
-                    ]}>
-                    LEVEL {level}
+      {/* ── GESTURE AREA WRAPPING FULL SCREEN ── */}
+      <GestureDetector gesture={Gesture.Race(panGesture, tap, longPress)}>
+        <View style={styles.gestureAreaFullScreen}>
+          
+          {/* ── HEADER HUD ─────────────────────────────────────
+               [ HOLD ]  SCORE | LVL | LINES  [ NEXT ]  [⏸]
+          ──────────────────────────────────────────────────── */}
+          <View style={[
+            styles.hud,
+            !isSoft && activeSkinId !== 'samurai_embers' && { backgroundColor: 'rgba(0,0,0,0.55)' },
+            activeSkinId === 'samurai_embers' && { backgroundColor: 'rgba(255,69,0,0.1)' },
+            isSoft && isKawaii && styles.hudKawaii,
+          ]}>
+            {/* HOLD */}
+            <View style={styles.hudPiece}>
+              <Text style={[styles.hudLabel, { color: labelColor }]}>HOLD</Text>
+              <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
+            </View>
+
+            {/* CENTER STATS */}
+            <View style={styles.hudStats}>
+              <View style={styles.hudStatRow}>
+                <View style={styles.hudStatCell}>
+                  <Text style={[styles.hudStatLabel, { color: labelColor }]}>SCORE</Text>
+                  <Text
+                    style={[styles.hudStatValue, { color: statColor }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {score.toLocaleString()}
                   </Text>
                 </View>
-
-                <TouchableOpacity style={[
-                  styles.iconBtn, 
-                  activeSkin.uiStyle === 'neumorphic' && styles.iconBtnNeumorphic,
-                  activeSkin.uiStyle === 'kawaii' && styles.iconBtnKawaii
-                ]} onPress={onPause}>
-                  <Text style={[
-                    styles.iconText, 
-                    activeSkin.uiStyle === 'neumorphic' && styles.iconTextNeumorphic,
-                    activeSkin.uiStyle === 'kawaii' && styles.iconTextKawaii
-                  ]}>{gameState === 'paused' ? '▶' : 'II'}</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.headerBottomRow}>
-                <View style={[
-                  styles.hudBox, 
-                  activeSkin.uiStyle === 'neumorphic' && [styles.hudBoxNeumorphic, { shadowColor: activeSkin.colors?.primary || '#ffc0cb' }],
-                  activeSkin.uiStyle === 'kawaii' && styles.hudBoxKawaii,
-                  activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }
-                ]}>
-                  <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
+                <View style={[styles.hudDivider, { backgroundColor: dividerColor }]} />
+                <View style={styles.hudStatCell}>
+                  <Text style={[styles.hudStatLabel, { color: labelColor }]}>LVL</Text>
+                  <Text style={[styles.hudStatValue, { color: statColor }]}>{level}</Text>
                 </View>
-                <View style={[
-                  styles.hudBox, 
-                  activeSkin.uiStyle === 'neumorphic' && [styles.hudBoxNeumorphic, { shadowColor: activeSkin.colors?.primary || '#ffc0cb' }],
-                  activeSkin.uiStyle === 'kawaii' && styles.hudBoxKawaii,
-                  activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }
-                ]}>
-                  <NextPiecePreview type={nextPieceType as TetrominoType} skin={activeSkin} />
+                <View style={[styles.hudDivider, { backgroundColor: dividerColor }]} />
+                <View style={styles.hudStatCell}>
+                  <Text style={[styles.hudStatLabel, { color: labelColor }]}>LINES</Text>
+                  <Text style={[styles.hudStatValue, { color: statColor }]}>{lines}</Text>
                 </View>
               </View>
             </View>
 
-            {/* ── FULL SCREEN CENTERED GAME BOARD ── */}
-            <View style={styles.gameAreaCentered}>
-              <View style={[
-                styles.boardContainer, 
-                { borderColor: activeSkin.colors?.secondary || 'rgba(255, 255, 255, 0.05)' },
-                (activeSkinId === 'samurai_embers' || activeSkin.uiStyle === 'neumorphic' || activeSkin.uiStyle === 'kawaii') && { borderWidth: 0 },
-                (activeSkin.uiStyle === 'neumorphic' || activeSkin.uiStyle === 'kawaii') && { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }
-              ]}>
-                <MosaicCanvas
-                  board={board}
-                  currentPiece={currentPiece}
-                  ghostY={ghostY}
-                  revealMask={revealMask}
-                  skin={activeSkin}
-                  flashOpacity={flashOpacity}
-                />
-                {activeSkinId === 'goku_aura' && <ContinuousAuraOverlay />}
-              </View>
+            {/* NEXT */}
+            <View style={styles.hudPiece}>
+              <Text style={[styles.hudLabel, { color: labelColor }]}>NEXT</Text>
+              <NextPiecePreview type={nextPieceType as TetrominoType} skin={activeSkin} />
             </View>
 
-            {/* ── RESERVED SPACE FOR FUTURE BANNER AD ── */}
-            <View style={styles.adBannerSpace} />
-
-            {/* ── FULL SCREEN PHYSICS PARTICLES ── */}
-            <AmbientParticleSystem skin={activeSkin} />
-
+            {/* PAUSE — only visible control during play. Back is in the pause modal. */}
+            <TouchableOpacity
+              style={[
+                styles.pauseBtn,
+                isSoft && styles.pauseBtnSoft,
+                isKawaii && styles.pauseBtnKawaii,
+              ]}
+              onPress={onPause}
+            >
+              <Text style={[styles.pauseBtnText, isSoft && { color: primaryColor }]}>
+                {gameState === 'paused' ? '▶' : '⏸'}
+              </Text>
+            </TouchableOpacity>
           </View>
-        </GestureDetector>
-      </View>
 
+          {/* ── BOARD ── */}
+          <View style={styles.boardArea}>
+            <View style={[
+              styles.boardContainer,
+              (activeSkinId === 'samurai_embers' || isSoft) && { borderWidth: 0 },
+              isSoft && { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 },
+            ]}>
+              <MosaicCanvas
+                board={board}
+                currentPiece={currentPiece}
+                ghostY={ghostY}
+                revealMask={revealMask}
+                skin={activeSkin}
+                flashOpacity={flashOpacity}
+              />
+              {activeSkinId === 'goku_aura' && <ContinuousAuraOverlay />}
+            </View>
+          </View>
+          
+          {/* ── PARTICLES (must be inside GestureDetector child) ── */}
+          <AmbientParticleSystem skin={activeSkin} />
+          
+        </View>
+      </GestureDetector>
+
+      {/* ── PAUSE MODAL ── */}
       {gameState === 'paused' && (
         <View style={styles.modal}>
           <LinearGradient
-            colors={activeSkin.uiStyle === 'neumorphic' ? ['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.8)'] : ['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
+            colors={isSoft
+              ? ['rgba(255,255,255,0.5)', 'rgba(255,255,255,0.9)']
+              : ['rgba(5,5,15,0.8)', 'rgba(5,5,20,0.98)']
+            }
             style={StyleSheet.absoluteFillObject}
           />
           <View style={[
-            styles.modalCard, 
-            activeSkin.uiStyle === 'neumorphic' && [styles.modalCardNeumorphic, { shadowColor: activeSkin.colors?.primary || '#ffc0cb' }],
-            activeSkin.uiStyle === 'kawaii' && styles.modalCardKawaii,
-            activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { borderColor: `${activeSkin.colors.primary}66` }
+            styles.modalCard,
+            isSoft && isNeumorphic && [styles.modalCardNeumorphic, { shadowColor: primaryColor }],
+            isSoft && isKawaii    && styles.modalCardKawaii,
+            !isSoft && activeSkin.colors && { borderColor: `${primaryColor}66` },
           ]}>
             <Text style={[
-              styles.modalTitle, 
-              activeSkin.uiStyle === 'neumorphic' && styles.modalTitleNeumorphic,
-              activeSkin.uiStyle === 'kawaii' && styles.modalTitleKawaii,
-              activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { textShadowColor: activeSkin.colors.primary }
+              styles.modalTitle,
+              isSoft && isNeumorphic && styles.modalTitleNeumorphic,
+              isSoft && isKawaii    && styles.modalTitleKawaii,
+              !isSoft && activeSkin.colors && { textShadowColor: primaryColor },
             ]}>PAUSED</Text>
-            <TouchableOpacity style={[
-              styles.resumeBtn, 
-              activeSkin.uiStyle === 'neumorphic' && [styles.resumeBtnNeumorphic, { shadowColor: activeSkin.colors?.primary || '#ffc0cb' }],
-              activeSkin.uiStyle === 'kawaii' && styles.resumeBtnKawaii,
-              activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { backgroundColor: activeSkin.colors.primary }
-            ]} onPress={onPause}>
+
+            <TouchableOpacity
+              style={[
+                styles.resumeBtn,
+                isSoft && isNeumorphic && [styles.resumeBtnNeumorphic, { shadowColor: primaryColor }],
+                isSoft && isKawaii    && styles.resumeBtnKawaii,
+                !isSoft && activeSkin.colors && { backgroundColor: primaryColor },
+              ]}
+              onPress={onPause}
+            >
               <Text style={[
-                styles.resumeText, 
-                activeSkin.uiStyle === 'neumorphic' && { color: activeSkin.colors?.primary || '#ff8c00' },
-                activeSkin.uiStyle === 'kawaii' && { color: '#FF8C00' }
+                styles.resumeText,
+                isSoft && { color: isNeumorphic ? primaryColor : '#FF8C00' },
               ]}>RESUME</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[
-              styles.quitBtn, 
-              activeSkin.uiStyle === 'neumorphic' && styles.quitBtnNeumorphic,
-              activeSkin.uiStyle === 'kawaii' && styles.quitBtnKawaii,
-              activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { backgroundColor: `${activeSkin.colors.primary}1A`, borderColor: activeSkin.colors.primary }
-            ]} onPress={onBack}>
+
+            <TouchableOpacity
+              style={[
+                styles.menuBtn,
+                isSoft && isNeumorphic && styles.menuBtnNeumorphic,
+                isSoft && isKawaii    && styles.menuBtnKawaii,
+                !isSoft && activeSkin.colors && { borderColor: primaryColor },
+              ]}
+              onPress={onBack}
+            >
               <Text style={[
-                styles.quitText, 
-                activeSkin.colors && activeSkin.uiStyle !== 'kawaii' && { color: activeSkin.colors.primary },
-                activeSkin.uiStyle === 'kawaii' && { color: '#FF8C00' }
-              ]}>ABORT MISSION</Text>
+                styles.menuText,
+                isSoft && isKawaii && { color: '#FF8C00' },
+                !isSoft && activeSkin.colors && { color: primaryColor },
+              ]}>↩ MAIN MENU</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -304,114 +291,120 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  ambientGlow: {
-    position: 'absolute',
-    top: '25%',
-    left: '15%',
-    width: '50%',
-    height: '50%',
-    backgroundColor: 'rgba(0, 150, 255, 0.05)',
-    borderRadius: 200,
-    transform: [{ scaleX: 1.5 }],
-  },
-  overlay: {
-    flex: 1,
-    justifyContent: 'space-between',
-  },
+  container: { flex: 1 },
   gestureAreaFullScreen: {
     flex: 1,
     width: '100%',
   },
-  
-  // --- HEADER HUD ---
-  headerHud: {
-    paddingTop: 40, // safe area padding
-    paddingBottom: 10,
-    width: '100%',
-    zIndex: 10,
-  },
-  headerTopRow: {
+
+  // ── HEADER HUD ──
+  hud: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingTop: 48,
+    paddingBottom: 8,
+    paddingHorizontal: 10,
+    gap: 6,
   },
-  statsCenter: {
+  hudKawaii: {
+    borderBottomWidth: 2.5,
+    borderBottomColor: '#FF8C00',
+    borderStyle: 'dashed',
+  },
+  hudPiece: {
     alignItems: 'center',
+    width: 62,
   },
-  scoreText: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#fff',
+  hudLabel: {
+    fontSize: 7,
+    fontWeight: '800',
     letterSpacing: 2,
-    textShadowColor: 'rgba(255, 255, 255, 0.5)',
-    textShadowRadius: 5,
+    marginBottom: 2,
   },
-  levelText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#aaa',
-    letterSpacing: 1,
-    marginTop: -2,
+  hudStats: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  iconBtn: {
+  hudStatRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  hudStatCell: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    minWidth: 44,
+  },
+  hudDivider: {
+    width: 1,
+    height: 26,
+  },
+  hudStatLabel: {
+    fontSize: 7,
+    fontWeight: '800',
+    letterSpacing: 2,
+    marginBottom: 1,
+  },
+  hudStatValue: {
+    fontSize: 17,
+    fontWeight: '900',
+    letterSpacing: 0,
+    textAlign: 'center',
+  },
+  pauseBtn: {
     width: 36,
     height: 36,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 18,
-    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
   },
-  iconText: {
+  pauseBtnSoft: {
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    borderColor: 'rgba(0,0,0,0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  pauseBtnKawaii: {
+    backgroundColor: '#FFE4E1',
+    borderWidth: 2.5,
+    borderColor: '#FF8C00',
+    borderStyle: 'dashed',
+  },
+  pauseBtnText: {
     color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  headerBottomRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 40,
-    marginTop: 5,
-  },
-  hudBox: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 5,
-    transform: [{ scale: 0.8 }], // Shrink the boxes natively
+    fontSize: 15,
+    fontWeight: '700',
   },
 
-  // --- GAME BOARD AREA ---
-  gameAreaCentered: {
+  // ── BOARD ──
+  boardArea: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+    width: '100%',
   },
   boardContainer: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255,255,255,0.05)',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.5,
     shadowRadius: 20,
     elevation: 10,
   },
-  adBannerSpace: {
-    width: '100%',
-    height: 60, // Standard mobile banner height
-  },
 
-  // --- PAUSE MODAL ---
+  // ── PAUSE MODAL ──
   modal: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
@@ -419,95 +412,68 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   modalCard: {
-    width: '80%',
-    backgroundColor: 'rgba(10, 10, 15, 0.8)',
-    borderRadius: 24,
+    width: '78%',
+    backgroundColor: 'rgba(8,8,18,0.84)',
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    padding: 40,
+    borderColor: 'rgba(255,255,255,0.1)',
+    padding: 36,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 30,
+    shadowOpacity: 0.6,
+    shadowRadius: 40,
     shadowOffset: { width: 0, height: 20 },
-    elevation: 20,
+    elevation: 24,
   },
   modalTitle: {
     color: '#fff',
-    fontSize: 42,
+    fontSize: 36,
     fontWeight: '900',
     letterSpacing: 8,
-    marginBottom: 40,
-    textShadowColor: 'rgba(255, 255, 255, 0.5)',
-    textShadowRadius: 15,
+    marginBottom: 32,
+    textShadowColor: 'rgba(255,255,255,0.4)',
+    textShadowRadius: 12,
   },
   resumeBtn: {
     width: '100%',
-    height: 60,
+    height: 54,
     backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   resumeText: {
     color: '#000',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
     letterSpacing: 4,
   },
-  quitBtn: {
+  menuBtn: {
     width: '100%',
-    height: 50,
-    backgroundColor: 'rgba(255, 50, 50, 0.1)',
-    borderRadius: 12,
+    height: 46,
+    backgroundColor: 'transparent',
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 50, 50, 0.4)',
+    borderColor: 'rgba(255,255,255,0.2)',
   },
-  quitText: {
-    color: '#ff5555',
-    fontSize: 14,
-    fontWeight: '900',
+  menuText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    fontWeight: '700',
     letterSpacing: 2,
   },
 
-  // --- PAPER CUT-OUT NEUMORPHIC STYLES ---
-  iconBtnNeumorphic: {
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderWidth: 0,
-    shadowOffset: { width: 3, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 1,
-    elevation: 3,
-  },
-  iconTextNeumorphic: {
-    color: '#ff8c00',
-  },
-  scoreTextNeumorphic: {
-    fontWeight: '900',
-    textShadowRadius: 0,
-    textShadowOffset: { width: 0, height: 0 },
-  },
-  levelTextNeumorphic: {
-    fontWeight: 'bold',
-  },
-  hudBoxNeumorphic: {
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderWidth: 0,
-    shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
-    elevation: 4,
-  },
+  // ── NEUMORPHIC OVERRIDES ──
   modalCardNeumorphic: {
-    backgroundColor: 'rgba(255,255,255,0.95)',
+    backgroundColor: 'rgba(255,255,255,0.96)',
     borderWidth: 0,
     shadowOffset: { width: 6, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 8,
+    shadowOpacity: 0.18,
+    shadowRadius: 3,
+    elevation: 10,
   },
   modalTitleNeumorphic: {
     color: '#ff8c00',
@@ -517,55 +483,19 @@ const styles = StyleSheet.create({
   resumeBtnNeumorphic: {
     backgroundColor: '#fff',
     shadowOffset: { width: 4, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.14,
     shadowRadius: 1,
     elevation: 4,
   },
-  quitBtnNeumorphic: {
+  menuBtnNeumorphic: {
     backgroundColor: 'transparent',
     borderWidth: 0,
   },
 
-  // --- KAWAII STICKER STYLES ---
-  iconBtnKawaii: {
-    backgroundColor: '#FFE4E1',
-    borderWidth: 3,
-    borderColor: '#FF8C00',
-    borderStyle: 'dashed',
-    borderRadius: 25,
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  iconTextKawaii: {
-    color: '#FF8C00',
-    fontWeight: '900',
-  },
-  scoreTextKawaii: {
-    fontWeight: '900',
-    textShadowRadius: 0,
-    color: '#FF8C00',
-  },
-  levelTextKawaii: {
-    fontWeight: 'bold',
-    color: '#FF69B4',
-  },
-  hudBoxKawaii: {
-    backgroundColor: '#FFE4E1',
-    borderWidth: 3,
-    borderColor: '#FF8C00',
-    borderStyle: 'dashed',
-    borderRadius: 20,
-    elevation: 0,
-    shadowOpacity: 0,
-  },
-  hudTitleKawaii: {
-    color: '#FF8C00',
-    fontWeight: '900',
-    marginBottom: 2,
-  },
+  // ── KAWAII OVERRIDES ──
   modalCardKawaii: {
     backgroundColor: '#FFE4E1',
-    borderWidth: 4,
+    borderWidth: 3.5,
     borderStyle: 'dashed',
     borderColor: '#FF8C00',
     borderRadius: 30,
@@ -586,11 +516,11 @@ const styles = StyleSheet.create({
     elevation: 0,
     shadowOpacity: 0,
   },
-  quitBtnKawaii: {
-    backgroundColor: 'transparent',
+  menuBtnKawaii: {
     borderWidth: 3,
     borderStyle: 'dashed',
     borderColor: '#FF8C00',
     borderRadius: 50,
+    backgroundColor: 'transparent',
   },
 });

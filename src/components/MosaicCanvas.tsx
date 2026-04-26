@@ -91,26 +91,6 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
       return path;
     }, [canvasW, canvasH]);
 
-    // Generate static water droplets for condensation effect
-    const waterDroplets = useMemo(() => {
-      if (!skin.waterDroplets) return [];
-      return Array.from({ length: 40 }).map((_, i) => ({
-        id: i,
-        x: Math.random() * canvasW,
-        y: Math.random() * canvasH,
-        r: Math.random() * 4 + 3, // Size of droplets
-      }));
-    }, [skin.waterDroplets, canvasW, canvasH]);
-
-    const dropletClipPath = useMemo(() => {
-      const p = Skia.Path.Make();
-      if (!skin.waterDroplets) return p;
-      waterDroplets.forEach(d => {
-        p.addCircle(d.x, d.y, d.r);
-      });
-      return p;
-    }, [waterDroplets, skin.waterDroplets]);
-
     // Neumorphic Inset Frame Path (EvenOdd window)
     const insetFramePath = useMemo(() => {
       const p = Skia.Path.Make();
@@ -348,40 +328,6 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           </Group>
         )}
 
-        {/* ── LAYER 1.1: Water Droplets (Magnifying Glass Effect) ── */}
-        {backgroundImage && skin.waterDroplets && (
-          <Group>
-            {/* Draw droplet drop shadows */}
-            <Path path={dropletClipPath} color="rgba(0,0,0,0.1)">
-              <Shadow dx={0} dy={4} blur={4} color="rgba(0,0,0,0.5)" />
-            </Path>
-            
-            {/* Magnified Image + Specular Highlights */}
-            <Group clip={dropletClipPath}>
-              <Group transform={[{ scale: 1.15 }]} origin={vec(canvasW / 2, canvasH / 2)}>
-                <Image
-                  image={backgroundImage}
-                  x={imgX}
-                  y={imgY}
-                  width={imgWidth}
-                  height={imgHeight}
-                  fit={skin.blockStyle.marshmallow ? "contain" : "cover"}
-                />
-              </Group>
-              {waterDroplets.map(drop => (
-                <Group key={`hi-${drop.id}`}>
-                  {/* Bottom-right inner darkness */}
-                  <Circle cx={drop.x + drop.r * 0.3} cy={drop.y + drop.r * 0.3} r={drop.r * 0.6} color="rgba(0,0,0,0.2)">
-                    <BlurMask blur={drop.r * 0.5} style="normal" />
-                  </Circle>
-                  {/* Top-left specular highlight */}
-                  <Circle cx={drop.x - drop.r * 0.3} cy={drop.y - drop.r * 0.3} r={drop.r * 0.25} color="rgba(255,255,255,0.9)" />
-                </Group>
-              ))}
-            </Group>
-          </Group>
-        )}
-
         {/* ── LAYER 1.5: Magnifier Effect (Zoomed background through blocks) ── */}
         {backgroundImage && skin.blockStyle.magnifier && !skin.blockStyle.marshmallow && (
           <Group clip={settledMaskPath}>
@@ -413,14 +359,66 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         )}
 
 
-        {/* ── LAYER 2: Block Rendering (Glass or Marshmallow) ── */}
+        {/* ── LAYER 2: Block Rendering (Lava / Marshmallow / Glass) ── */}
         {settledBlocks.map(({ x, y, color }) => {
           const bx = x * BLOCK_SIZE;
           const by = y * BLOCK_SIZE;
           const blockColor = skin.blockStyle.uniformColor || color || '#fff';
           return (
             <Group key={`glass-${x}-${y}`}>
-              {skin.blockStyle.marshmallow ? (
+              {skin.blockStyle.lava ? (
+                /* ── MOLTEN OBSIDIAN BLOCK ── */
+                <Group>
+                  {/* Base: Deep obsidian — near-black with subtle dark red centre */}
+                  <Rect x={bx} y={by} width={BLOCK_SIZE} height={BLOCK_SIZE} color="#0A0000" />
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={2}>
+                    <LinearGradient
+                      start={vec(bx + 1, by + 1)}
+                      end={vec(bx + BLOCK_SIZE - 1, by + BLOCK_SIZE - 1)}
+                      colors={['#1A0500', '#0D0000']}
+                    />
+                  </RoundedRect>
+
+                  {/* Lava Crack Bevels — sharp, glowing, no blur — breathing tint */}
+                  {/* Top crack */}
+                  <Path
+                    path={`M ${bx+1} ${by+1} L ${bx+BLOCK_SIZE-1} ${by+1} L ${bx+BLOCK_SIZE-3} ${by+3} L ${bx+3} ${by+3} Z`}
+                    opacity={emberBreath}
+                    color="#FF4500"
+                  />
+                  {/* Left crack */}
+                  <Path
+                    path={`M ${bx+1} ${by+1} L ${bx+3} ${by+3} L ${bx+3} ${by+BLOCK_SIZE-3} L ${bx+1} ${by+BLOCK_SIZE-1} Z`}
+                    opacity={emberBreath}
+                    color="#CC2200"
+                  />
+                  {/* Bottom shadow crack */}
+                  <Path
+                    path={`M ${bx+1} ${by+BLOCK_SIZE-1} L ${bx+3} ${by+BLOCK_SIZE-3} L ${bx+BLOCK_SIZE-3} ${by+BLOCK_SIZE-3} L ${bx+BLOCK_SIZE-1} ${by+BLOCK_SIZE-1} Z`}
+                    color="#FF2200"
+                    opacity={emberBreath}
+                  />
+                  {/* Right shadow crack */}
+                  <Path
+                    path={`M ${bx+BLOCK_SIZE-1} ${by+1} L ${bx+BLOCK_SIZE-3} ${by+3} L ${bx+BLOCK_SIZE-3} ${by+BLOCK_SIZE-3} L ${bx+BLOCK_SIZE-1} ${by+BLOCK_SIZE-1} Z`}
+                    color="#991100"
+                    opacity={emberBreath}
+                  />
+
+                  {/* Inner ember glow line — 1px hot line at the top edge */}
+                  <Rect x={bx + 3} y={by + 3} width={BLOCK_SIZE - 6} height={1} color="#FF6600" opacity={emberBreath} />
+
+                  {/* Specular — single sharp white line on top edge only */}
+                  <Rect x={bx + 2} y={by + 1} width={BLOCK_SIZE - 4} height={1} color="rgba(255,200,150,0.6)" />
+
+                  {/* Subtle ash texture */}
+                  <RoundedRect x={bx + 2} y={by + 2} width={BLOCK_SIZE - 4} height={BLOCK_SIZE - 4} r={1} blendMode="multiply">
+                    <Paint>
+                      <FractalNoise freqX={0.15} freqY={0.15} octaves={3} />
+                    </Paint>
+                  </RoundedRect>
+                </Group>
+              ) : skin.blockStyle.marshmallow ? (
                 <Group>
                   <RoundedRect
                     x={bx + 1} y={by + 1}
@@ -602,7 +600,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         {/* ── LAYER 6: Neumorphic Inset Frame (Rendered OVER everything, outside the board clip) ── */}
         </Group>
 
-        {skin.id === 'bubblegum_bunny' && (
+        {(skin.uiStyle === 'neumorphic' || skin.uiStyle === 'kawaii') && (
           <Group>
             <Path path={insetFramePath} color={skin.colors?.background?.[0] || '#FFE4E1'}>
               {/* Dark top-left inner shadow - sharp for paper cut-out */}

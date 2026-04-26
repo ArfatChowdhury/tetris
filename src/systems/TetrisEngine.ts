@@ -152,8 +152,8 @@ export class TetrisEngine {
   }
 
   static lockPiece(
-    board: Board, 
-    piece: Piece, 
+    board: Board,
+    piece: Piece,
     skinId: string
   ): { newBoard: Board; isTopOut: boolean } {
     const newBoard = board.map(row => [...row]);
@@ -161,19 +161,21 @@ export class TetrisEngine {
 
     piece.shape.forEach((row, y) => {
       row.forEach((value, x) => {
-        if (value) {
-          const boardY = piece.y + y;
-          const boardX = piece.x + x;
-          if (boardY < 0) {
-            isTopOut = true;
-            return;
-          }
-          if (boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
-            newBoard[boardY][boardX] = { color: piece.color, skinId };
-          }
+        if (!value) return;
+        const boardY = piece.y + y;
+        const boardX = piece.x + x;
+        // Cell is above the visible board — game over condition
+        if (boardY < 0) {
+          isTopOut = true;
+          return;
+        }
+        // Only write cells that are strictly inside the board bounds
+        if (boardY < BOARD_HEIGHT && boardX >= 0 && boardX < BOARD_WIDTH) {
+          newBoard[boardY][boardX] = { color: piece.color, skinId };
         }
       });
     });
+
     return { newBoard, isTopOut };
   }
 

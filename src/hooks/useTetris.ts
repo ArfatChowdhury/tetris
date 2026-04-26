@@ -84,6 +84,18 @@ export const useTetris = (activeSkinId: string) => {
     setRevealMask(next);
   };
 
+  // Helper: shift revealMask down when rows are cleared (mirrors clearFullRows logic)
+  const shiftRevealMaskForClearedRows = (clearedRows: number[]) => {
+    if (clearedRows.length === 0) return;
+    const clearedSet = new Set(clearedRows);
+    const shifted = revealMaskRef.current.filter((_, index) => !clearedSet.has(index));
+    while (shifted.length < BOARD_HEIGHT) {
+      shifted.unshift(Array(BOARD_WIDTH).fill(false));
+    }
+    revealMaskRef.current = shifted;
+    setRevealMask(shifted);
+  };
+
   // --- Timers ---
   const bagRef = useRef<TetrominoType[]>([]);
   const gameLoopRef = useRef<NodeJS.Timeout | null>(null);
@@ -148,6 +160,9 @@ export const useTetris = (activeSkinId: string) => {
     }
 
     const { newBoard, clearedRows } = TetrisEngine.clearFullRows(lockedBoard);
+
+    // Keep revealMask in sync with the board — shift it the same way cleared rows are removed
+    shiftRevealMaskForClearedRows(clearedRows);
 
     if (clearedRows.length > 0) {
       const lineScore = [0, SCORING.SINGLE, SCORING.DOUBLE, SCORING.TRIPLE, SCORING.TETRIS][clearedRows.length] || 0;
@@ -276,6 +291,9 @@ export const useTetris = (activeSkinId: string) => {
     }
 
     const { newBoard, clearedRows } = TetrisEngine.clearFullRows(lockedBoard);
+
+    // Keep revealMask in sync with the board
+    shiftRevealMaskForClearedRows(clearedRows);
 
     setBoard(newBoard);
     boardRef.current = newBoard;

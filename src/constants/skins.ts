@@ -10,6 +10,7 @@ export interface BlockStyle {
   glow?: boolean;
   glass?: boolean;
   led?: boolean;
+  lava?: boolean;
   magnifier?: boolean;
   magnifierScale?: number;
   breathing?: boolean;
@@ -68,12 +69,10 @@ export const SKINS: SkinDefinition[] = [
     uiStyle: 'glass',
     particles: 'ash',
     blockStyle: {
-      glow: true,
-      glass: true,
+      lava: true,
       breathing: true,
       magnifier: true,
       magnifierScale: 2.0,
-      borderColor: 'rgba(255, 50, 0, 0.4)',
     },
     particleColor: '#ff4500',
     lineClearEffect: 'dissolve',
@@ -90,7 +89,7 @@ export const SKINS: SkinDefinition[] = [
     price: 0,
     preview: '🐰',
     image: require('../assets/images/bunny/rabbit.png'),
-    uiStyle: 'neumorphic',
+    uiStyle: 'kawaii',
     particles: 'hearts',
     imageScale: 0.8,
     blockStyle: {
