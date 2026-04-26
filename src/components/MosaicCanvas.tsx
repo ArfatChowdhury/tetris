@@ -1,5 +1,5 @@
 import React, { useMemo, useEffect } from 'react';
-import { useSharedValue, withRepeat, withTiming, Easing, useDerivedValue } from 'react-native-reanimated';
+import { useSharedValue, withRepeat, withTiming, Easing, useDerivedValue, SharedValue } from 'react-native-reanimated';
 import {
   Canvas,
   Image,
@@ -45,18 +45,36 @@ interface AshParticleProps {
   size: number;
   speed: number;
   wobble: number;
-  time: Animated.SharedValue<number>;
+  time: SharedValue<number>;
   canvasH: number;
+  image?: any;
 }
 
-const AshParticle: React.FC<AshParticleProps> = ({ x, y, size, speed, wobble, time, canvasH }) => {
+const AshParticle: React.FC<AshParticleProps> = ({ x, y, size, speed, wobble, time, canvasH, image }) => {
   const cx = useDerivedValue(() => {
     return x + Math.sin(time.value * 0.005 + wobble) * 15;
   });
   const cy = useDerivedValue(() => {
-    const currentY = y - time.value * speed;
+    // If it's an image (heart), fall down like snow (+). If ash, float up (-).
+    const currentY = image ? y + time.value * speed : y - time.value * speed;
     return ((currentY % canvasH) + canvasH) % canvasH;
   });
+
+  const imgSize = size * 6; // Make hearts larger than ash
+  const imgTransform = useDerivedValue(() => {
+    return [
+      { translateX: cx.value - imgSize / 2 },
+      { translateY: cy.value - imgSize / 2 }
+    ];
+  });
+
+  if (image) {
+    return (
+      <Group transform={imgTransform}>
+        <Image image={image} x={0} y={0} width={imgSize} height={imgSize} fit="contain" />
+      </Group>
+    );
+  }
 
   return (
     <Circle cx={cx} cy={cy} r={size} color="#FF6600">
@@ -78,6 +96,8 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     const canvasH = ROWS * BLOCK_SIZE;
 
     const backgroundImage = useImage(skin.image);
+    const carrotImage = useImage(require('../assets/images/bunny/carrot.png'));
+    const heartImage = useImage(require('../assets/images/bunny/heart.png'));
     const { parallaxX, parallaxY } = useParallax();
 
     // --- Parallax Overscan Padding ---
@@ -124,25 +144,26 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     // --- Ash Particle Engine ---
     const ashTime = useSharedValue(0);
     useEffect(() => {
-      if (skin.blockStyle.breathing) {
+      if (skin.particles === 'ash' || skin.particles === 'hearts') {
         ashTime.value = withRepeat(
           withTiming(5000, { duration: 60000, easing: Easing.linear }),
           -1,
           false
         );
       }
-    }, [skin.blockStyle.breathing, ashTime]);
+    }, [skin.particles, ashTime]);
 
     const ashParticles = useMemo(() => {
-      return Array.from({ length: 25 }).map((_, i) => ({
+      const isHearts = skin.particles === 'hearts';
+      return Array.from({ length: isHearts ? 15 : 25 }).map((_, i) => ({
         id: i,
         x: Math.random() * canvasW,
         y: Math.random() * canvasH,
-        size: Math.random() * 2 + 1,
-        speed: Math.random() * 0.4 + 0.2,
+        size: isHearts ? Math.random() * 2 + 1.5 : Math.random() * 2 + 1,
+        speed: isHearts ? Math.random() * 0.15 + 0.05 : Math.random() * 0.4 + 0.2,
         wobble: Math.random() * Math.PI * 2,
       }));
-    }, [canvasW, canvasH]);
+    }, [canvasW, canvasH, skin.particles]);
 
     // --- Dynamic Mask path: Derived from CURRENT board state + currentPiece ---
     // The image ONLY shows where blocks exist. When a row clears, the image clears.
@@ -215,11 +236,11 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
     // --- Settled glass blocks list ---
     const settledBlocks = useMemo(() => {
-      const blocks: Array<{ x: number; y: number }> = [];
+      const blocks: Array<{ x: number; y: number; color?: string }> = [];
       board.forEach((row, y) => {
         if (!row) return;
         row.forEach((cell, x) => {
-          if (cell !== null) blocks.push({ x, y });
+          if (cell !== null) blocks.push({ x, y, color: cell.color });
         });
       });
       return blocks;
@@ -267,24 +288,30 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         {/* Everything inside the Canvas is strictly clipped to this 8px rounded rectangle */}
         <Group clip={boardClipPath}>
 
-          {/* ── ATMOSPHERIC BASE: The "Glass Plinth" — Gives the board a heavy, premium feel ── */}
-          <Rect x={0} y={0} width={canvasW} height={canvasH} color="#050810" />
-          <Rect x={0} y={0} width={canvasW} height={canvasH}>
-            <LinearGradient
-              start={vec(0, 0)}
-              end={vec(canvasW, canvasH)}
-              colors={['#0A1020', '#050810']}
-            />
-          </Rect>
+          {/* ── ATMOSPHERIC BASE: The "Glass Plinth" OR "Clay Cartoon" ── */}
+          {skin.blockStyle.marshmallow ? (
+            <RoundedRect x={0} y={0} width={canvasW} height={canvasH} color="#FFE4E1" r={16} />
+          ) : (
+            <Group>
+              <Rect x={0} y={0} width={canvasW} height={canvasH} color="#050810" />
+              <Rect x={0} y={0} width={canvasW} height={canvasH}>
+                <LinearGradient
+                  start={vec(0, 0)}
+                  end={vec(canvasW, canvasH)}
+                  colors={['#0A1020', '#050810']}
+                />
+              </Rect>
+            </Group>
+          )}
 
-          {/* ── DIAGNOSTIC FALLBACK: If image fails to load, show red background ── */}
+          {/* ── DIAGNOSTIC FALLBACK: If image fails to load ── */}
           {!backgroundImage && (
             <Rect x={0} y={0} width={canvasW} height={canvasH} color="#FF00324D" />
           )}
 
 
-          {/* ── LAYER 0: Faint, Bleak Black & White Background ── */}
-          {backgroundImage && (
+          {/* ── LAYER 0: Faint, Bleak Black & White Background (Skipped for Cartoon) ── */}
+          {backgroundImage && !skin.blockStyle.marshmallow && (
             <Group opacity={0.15}>
               <ColorMatrix matrix={BLACK_AND_WHITE} />
               <Image
@@ -326,8 +353,8 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
             </Group>
           )}
 
-          {/* ── LAYER 0.8: Ash Particles ── */}
-          {skin.blockStyle.breathing && ashParticles.map((p) => (
+          {/* ── LAYER 0.8: Ambient Particles (Ash or Hearts) ── */}
+          {(skin.particles) && ashParticles.map((p) => (
             <AshParticle
               key={p.id}
               x={p.x}
@@ -337,25 +364,26 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
               wobble={p.wobble}
               time={ashTime}
               canvasH={canvasH}
+              image={skin.particles === 'hearts' ? heartImage : undefined}
             />
           ))}
 
-        {/* ── LAYER 1: Vivid image — revealed only through the permanent revealMask ── */}
+        {/* ── LAYER 1: Vivid image — revealed only through the permanent revealMask OR FULLY for Cartoon ── */}
         {backgroundImage && (
-          <Group clip={settledMaskPath}>
+          <Group clip={skin.blockStyle.marshmallow ? undefined : settledMaskPath}>
             <Image
               image={backgroundImage}
               x={imgX}
               y={imgY}
               width={imgWidth}
               height={imgHeight}
-              fit="cover"
+              fit={skin.blockStyle.marshmallow ? "contain" : "cover"}
             />
           </Group>
         )}
 
         {/* ── LAYER 1.5: Magnifier Effect (Zoomed background through blocks) ── */}
-        {backgroundImage && skin.blockStyle.magnifier && (
+        {backgroundImage && skin.blockStyle.magnifier && !skin.blockStyle.marshmallow && (
           <Group clip={settledMaskPath}>
             {/* Base Darkened Magnifier */}
             <Group transform={[{ scale: skin.blockStyle.magnifierScale || 2.0 }]} opacity={0.3}>
@@ -385,79 +413,57 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         )}
 
 
-        {/* ── LAYER 2: Glass crystal overlays on settled blocks (MINECRAFT 3D EXTRUDED STYLE) ── */}
-        {settledBlocks.map(({ x, y }) => {
+        {/* ── LAYER 2: Block Rendering (Glass or Marshmallow) ── */}
+        {settledBlocks.map(({ x, y, color }) => {
           const bx = x * BLOCK_SIZE;
           const by = y * BLOCK_SIZE;
           return (
             <Group key={`glass-${x}-${y}`}>
-              {/* High-Clarity Center — Almost fully transparent to see the parallax image clearly */}
-              <RoundedRect
-                x={bx + 1} y={by + 1}
-                width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
-                r={0}
-                color="#00000008"
-              />
-
-              {/* ── 3D BEVELS ── */}
-              {/* Top bevel (Strong light) */}
-              <Path 
-                path={`M ${bx+1} ${by+1} L ${bx+BLOCK_SIZE-1} ${by+1} L ${bx+BLOCK_SIZE-4} ${by+4} L ${bx+4} ${by+4} Z`} 
-                color="#FFFFFFCC" 
-              />
-              {/* Left bevel (Medium light) */}
-              <Path 
-                path={`M ${bx+1} ${by+1} L ${bx+4} ${by+4} L ${bx+4} ${by+BLOCK_SIZE-4} L ${bx+1} ${by+BLOCK_SIZE-1} Z`} 
-                color="#FFFFFF66" 
-              />
-              {/* Bottom bevel (Deep shadow) */}
-              <Path 
-                path={`M ${bx+1} ${by+BLOCK_SIZE-1} L ${bx+4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-1} ${by+BLOCK_SIZE-1} Z`} 
-                color="#000000B3" 
-              />
-              {/* Right bevel (Medium shadow) */}
-              <Path 
-                path={`M ${bx+BLOCK_SIZE-1} ${by+1} L ${bx+BLOCK_SIZE-4} ${by+4} L ${bx+BLOCK_SIZE-4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-1} ${by+BLOCK_SIZE-1} Z`} 
-                color="#00000066" 
-              />
-
-              {/* ── DYNAMIC GLARE (Moves slightly based on accelerometer parallax) ── */}
-              {/* We map the specular start/end points using parallax for physical glare */}
-              <RoundedRect
-                x={bx + 4} y={by + 4}
-                width={BLOCK_SIZE - 8} height={(BLOCK_SIZE - 8) * 0.4}
-                r={0}
-                blendMode="screen"
-              >
-                <LinearGradient
-                  start={vec(bx + 4, by + 4)}
-                  end={vec(bx + 4, by + (BLOCK_SIZE - 8) * 0.4)}
-                  colors={['#FFFFFF99', '#FFFFFF00']}
-                />
-              </RoundedRect>
-
-              {/* ── LED TV STYLE (Exclusive to LED skins) ── */}
-              {skin.blockStyle.led && (
+              {skin.blockStyle.marshmallow ? (
                 <Group>
-                  {/* Subtle Scanlines */}
-                  {Array.from({ length: 4 }).map((_, i) => (
-                    <Rect
-                      key={`scanline-${i}`}
-                      x={bx + 2}
-                      y={by + 4 + i * (BLOCK_SIZE / 4)}
-                      width={BLOCK_SIZE - 4}
-                      height={0.8}
-                      color="rgba(0, 255, 0, 0.15)"
-                    />
-                  ))}
-                  {/* RGB Subpixel "Dots" */}
-                  <Rect
-                    x={bx + BLOCK_SIZE / 2 - 1}
-                    y={by + BLOCK_SIZE / 2 - 1}
-                    width={2}
-                    height={2}
-                    color="rgba(255, 255, 255, 0.4)"
+                  <RoundedRect
+                    x={bx + 1} y={by + 1}
+                    width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                    r={8}
+                    color={color || '#fff'}
                   />
+                  <RoundedRect
+                    x={bx + 3} y={by + 3}
+                    width={BLOCK_SIZE - 6} height={(BLOCK_SIZE - 6) * 0.4}
+                    r={4}
+                    color="rgba(255,255,255,0.4)"
+                  />
+                </Group>
+              ) : (
+                <Group>
+                  {/* High-Clarity Center — Almost fully transparent to see the parallax image clearly */}
+                  <RoundedRect
+                    x={bx + 1} y={by + 1}
+                    width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                    r={0}
+                    color="#00000008"
+                  />
+    
+                  {/* ── 3D BEVELS ── */}
+                  <Path path={`M ${bx+1} ${by+1} L ${bx+BLOCK_SIZE-1} ${by+1} L ${bx+BLOCK_SIZE-4} ${by+4} L ${bx+4} ${by+4} Z`} color="#FFFFFFCC" />
+                  <Path path={`M ${bx+1} ${by+1} L ${bx+4} ${by+4} L ${bx+4} ${by+BLOCK_SIZE-4} L ${bx+1} ${by+BLOCK_SIZE-1} Z`} color="#FFFFFF66" />
+                  <Path path={`M ${bx+1} ${by+BLOCK_SIZE-1} L ${bx+4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-1} ${by+BLOCK_SIZE-1} Z`} color="#000000B3" />
+                  <Path path={`M ${bx+BLOCK_SIZE-1} ${by+1} L ${bx+BLOCK_SIZE-4} ${by+4} L ${bx+BLOCK_SIZE-4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-1} ${by+BLOCK_SIZE-1} Z`} color="#00000066" />
+    
+                  {/* ── DYNAMIC GLARE ── */}
+                  <RoundedRect x={bx + 4} y={by + 4} width={BLOCK_SIZE - 8} height={(BLOCK_SIZE - 8) * 0.4} r={0} blendMode="screen">
+                    <LinearGradient start={vec(bx + 4, by + 4)} end={vec(bx + 4, by + (BLOCK_SIZE - 8) * 0.4)} colors={['#FFFFFF99', '#FFFFFF00']} />
+                  </RoundedRect>
+    
+                  {/* ── LED TV STYLE ── */}
+                  {skin.blockStyle.led && (
+                    <Group>
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <Rect key={`scanline-${i}`} x={bx + 2} y={by + 4 + i * (BLOCK_SIZE / 4)} width={BLOCK_SIZE - 4} height={0.8} color="rgba(0, 255, 0, 0.15)" />
+                      ))}
+                      <Rect x={bx + BLOCK_SIZE / 2 - 1} y={by + BLOCK_SIZE / 2 - 1} width={2} height={2} color="rgba(255, 255, 255, 0.4)" />
+                    </Group>
+                  )}
                 </Group>
               )}
             </Group>
@@ -513,64 +519,55 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           );
         })}
 
-        {/* ── LAYER 5: Active falling piece — pure crystal + blue energy glow ── */}
+        {/* ── LAYER 5: Active falling piece ── */}
         {activeCells.map(({ x, y }) => {
           const bx = x * BLOCK_SIZE;
           const by = y * BLOCK_SIZE;
           return (
             <Group key={`active-${x}-${y}`}>
-              {/* Outer glow */}
-              <RoundedRect
-                x={bx + 1} y={by + 1}
-                width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
-                r={CORNER_RADIUS}
-                color="#00BEFF80"
-              >
-                <BlurMask blur={9} style="outer" respectCTM={false} />
-              </RoundedRect>
-
-              {/* Crystal body — pulsing energy feel */}
-              <RoundedRect
-                x={bx + 2} y={by + 2}
-                width={BLOCK_SIZE - 4} height={BLOCK_SIZE - 4}
-                r={CORNER_RADIUS - 1}
-                color="#00E5FF4D"
-              >
-                <BlurMask blur={2} style="normal" />
-              </RoundedRect>
-
-              {/* Top specular shine */}
-              <RoundedRect
-                x={bx + 3} y={by + 3}
-                width={BLOCK_SIZE - 6} height={(BLOCK_SIZE - 6) * 0.38}
-                r={CORNER_RADIUS - 2}
-                blendMode="screen"
-              >
-                <LinearGradient
-                  start={vec(bx + 3, by + 3)}
-                  end={vec(bx + 3, by + BLOCK_SIZE * 0.38)}
-                  colors={['#FFFFFFBF', '#FFFFFF00']}
-                />
-              </RoundedRect>
-
-              {/* Crystal border / Minecraft White Outline */}
-              {skin.blockStyle.magnifier ? (
-                <Rect
-                  x={bx} y={by}
-                  width={BLOCK_SIZE} height={BLOCK_SIZE}
-                  color="transparent"
-                >
-                  <Paint style="stroke" strokeWidth={1} color="rgba(255, 255, 255, 0.8)" />
-                </Rect>
+              {skin.blockStyle.marshmallow && currentPiece ? (
+                <Group>
+                  <RoundedRect
+                    x={bx + 1} y={by + 1}
+                    width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                    r={8}
+                    color={currentPiece.color}
+                  />
+                  <RoundedRect
+                    x={bx + 3} y={by + 3}
+                    width={BLOCK_SIZE - 6} height={(BLOCK_SIZE - 6) * 0.4}
+                    r={4}
+                    color="rgba(255,255,255,0.4)"
+                  />
+                </Group>
               ) : (
-                <RoundedRect
-                  x={bx + 1} y={by + 1}
-                  width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
-                  r={CORNER_RADIUS}
-                  color="transparent"
-                >
-                  <Paint style="stroke" strokeWidth={1.5} color="#64E1FFEB" blendMode="screen" />
-                </RoundedRect>
+                <Group>
+                  {/* Outer glow */}
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={CORNER_RADIUS} color="#00BEFF80">
+                    <BlurMask blur={9} style="outer" respectCTM={false} />
+                  </RoundedRect>
+    
+                  {/* Crystal body — pulsing energy feel */}
+                  <RoundedRect x={bx + 2} y={by + 2} width={BLOCK_SIZE - 4} height={BLOCK_SIZE - 4} r={CORNER_RADIUS - 1} color="#00E5FF4D">
+                    <BlurMask blur={2} style="normal" />
+                  </RoundedRect>
+    
+                  {/* Top specular shine */}
+                  <RoundedRect x={bx + 3} y={by + 3} width={BLOCK_SIZE - 6} height={(BLOCK_SIZE - 6) * 0.38} r={CORNER_RADIUS - 2} blendMode="screen">
+                    <LinearGradient start={vec(bx + 3, by + 3)} end={vec(bx + 3, by + BLOCK_SIZE * 0.38)} colors={['#FFFFFFBF', '#FFFFFF00']} />
+                  </RoundedRect>
+    
+                  {/* Crystal border / Minecraft White Outline */}
+                  {skin.blockStyle.magnifier ? (
+                    <Rect x={bx} y={by} width={BLOCK_SIZE} height={BLOCK_SIZE} color="transparent">
+                      <Paint style="stroke" strokeWidth={1} color="rgba(255, 255, 255, 0.8)" />
+                    </Rect>
+                  ) : (
+                    <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={CORNER_RADIUS} color="transparent">
+                      <Paint style="stroke" strokeWidth={1.5} color="#64E1FFEB" blendMode="screen" />
+                    </RoundedRect>
+                  )}
+                </Group>
               )}
             </Group>
           );

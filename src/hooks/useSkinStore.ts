@@ -5,6 +5,7 @@ import { SKINS, SkinDefinition } from '../constants/skins';
 export const useSkinStore = () => {
   const [ownedSkins, setOwnedSkins] = useState<string[]>(['goku_mosaic', 'minion_mosaic', 'samurai_embers']);
   const [activeSkinId, setActiveSkinId] = useState<string>('goku_mosaic');
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     const loadSkins = async () => {
@@ -13,6 +14,8 @@ export const useSkinStore = () => {
       
       const active = await Storage.get<string>(KEYS.ACTIVE_SKIN);
       if (active) setActiveSkinId(active);
+
+      setIsLoaded(true);
     };
     loadSkins();
   }, []);
@@ -38,6 +41,7 @@ export const useSkinStore = () => {
     ownedSkins,
     activeSkin,
     activeSkinId,
+    isLoaded,
     unlockSkin,
     applySkin,
     allSkins: SKINS,

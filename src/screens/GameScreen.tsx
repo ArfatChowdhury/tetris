@@ -21,7 +21,7 @@ interface GameScreenProps {
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) => {
-  const { activeSkin, activeSkinId } = useSkinStore();
+  const { activeSkin, activeSkinId, isLoaded } = useSkinStore();
   const game = useTetris(activeSkinId);
 
   const {
@@ -127,10 +127,17 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
       runOnJS(onSoftDropEnd)();
     });
 
+  if (!isLoaded) {
+    return <View style={styles.container} />; // Show nothing while loading skin from storage
+  }
+
   return (
     <GestureHandlerRootView style={styles.container}>
       <LinearGradient
-        colors={activeSkin.colors?.background || ['#020408', '#050a18', '#0a1025']}
+        colors={
+          activeSkin.colors?.background || 
+          (activeSkin.uiStyle === 'cartoon' ? ['#FFF0F5', '#FFC0CB', '#FFF0F5'] : ['#020408', '#050a18', '#0a1025'])
+        }
         style={StyleSheet.absoluteFillObject}
       />
       
@@ -146,34 +153,52 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
             
             {/* ── CONSOLIDATED HEADER HUD ── */}
             <View style={styles.headerHud}>
-              <LinearGradient
-                colors={['rgba(0,0,0,0.9)', 'transparent']}
-                style={StyleSheet.absoluteFillObject}
-              />
+              {activeSkin.uiStyle !== 'cartoon' && (
+                <LinearGradient
+                  colors={['rgba(0,0,0,0.9)', 'transparent']}
+                  style={StyleSheet.absoluteFillObject}
+                />
+              )}
               <View style={styles.headerTopRow}>
-                <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
-                  <Text style={styles.iconText}>◁</Text>
+                <TouchableOpacity style={[styles.iconBtn, activeSkin.uiStyle === 'cartoon' && styles.iconBtnCartoon]} onPress={onBack}>
+                  <Text style={[styles.iconText, activeSkin.uiStyle === 'cartoon' && styles.iconTextCartoon]}>◁</Text>
                 </TouchableOpacity>
                 
                 <View style={styles.statsCenter}>
-                  <Text style={[styles.scoreText, activeSkin.colors && { color: activeSkin.colors.accent, textShadowColor: activeSkin.colors.primary }]}>
+                  <Text style={[
+                    styles.scoreText, 
+                    activeSkin.uiStyle === 'cartoon' && styles.scoreTextCartoon,
+                    activeSkin.colors && { color: activeSkin.colors.accent, textShadowColor: activeSkin.colors.primary }
+                  ]}>
                     {score.toLocaleString()}
                   </Text>
-                  <Text style={[styles.levelText, activeSkin.colors && { color: activeSkin.colors.primary }]}>
+                  <Text style={[
+                    styles.levelText, 
+                    activeSkin.uiStyle === 'cartoon' && styles.levelTextCartoon,
+                    activeSkin.colors && { color: activeSkin.colors.primary }
+                  ]}>
                     LEVEL {level}
                   </Text>
                 </View>
 
-                <TouchableOpacity style={styles.iconBtn} onPress={onPause}>
-                  <Text style={styles.iconText}>{gameState === 'paused' ? '▶' : 'II'}</Text>
+                <TouchableOpacity style={[styles.iconBtn, activeSkin.uiStyle === 'cartoon' && styles.iconBtnCartoon]} onPress={onPause}>
+                  <Text style={[styles.iconText, activeSkin.uiStyle === 'cartoon' && styles.iconTextCartoon]}>{gameState === 'paused' ? '▶' : 'II'}</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.headerBottomRow}>
-                <View style={[styles.hudBox, activeSkin.colors && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }]}>
+                <View style={[
+                  styles.hudBox, 
+                  activeSkin.uiStyle === 'cartoon' && styles.hudBoxCartoon,
+                  activeSkin.colors && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }
+                ]}>
                   <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
                 </View>
-                <View style={[styles.hudBox, activeSkin.colors && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }]}>
+                <View style={[
+                  styles.hudBox, 
+                  activeSkin.uiStyle === 'cartoon' && styles.hudBoxCartoon,
+                  activeSkin.colors && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }
+                ]}>
                   <NextPiecePreview type={nextPieceType as TetrominoType} skin={activeSkin} />
                 </View>
               </View>
@@ -208,15 +233,30 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
       {gameState === 'paused' && (
         <View style={styles.modal}>
           <LinearGradient
-            colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
+            colors={activeSkin.uiStyle === 'cartoon' ? ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.95)'] : ['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
             style={StyleSheet.absoluteFillObject}
           />
-          <View style={[styles.modalCard, activeSkin.colors && { borderColor: `${activeSkin.colors.primary}66` }]}>
-            <Text style={[styles.modalTitle, activeSkin.colors && { textShadowColor: activeSkin.colors.primary }]}>PAUSED</Text>
-            <TouchableOpacity style={[styles.resumeBtn, activeSkin.colors && { backgroundColor: activeSkin.colors.primary }]} onPress={onPause}>
-              <Text style={styles.resumeText}>RESUME</Text>
+          <View style={[
+            styles.modalCard, 
+            activeSkin.uiStyle === 'cartoon' && styles.modalCardCartoon,
+            activeSkin.colors && { borderColor: `${activeSkin.colors.primary}66` }
+          ]}>
+            <Text style={[
+              styles.modalTitle, 
+              activeSkin.uiStyle === 'cartoon' && styles.modalTitleCartoon,
+              activeSkin.colors && { textShadowColor: activeSkin.colors.primary }
+            ]}>PAUSED</Text>
+            <TouchableOpacity style={[
+              styles.resumeBtn, 
+              activeSkin.colors && { backgroundColor: activeSkin.colors.primary }
+            ]} onPress={onPause}>
+              <Text style={[styles.resumeText, activeSkin.uiStyle === 'cartoon' && { color: '#fff' }]}>RESUME</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[styles.quitBtn, activeSkin.colors && { backgroundColor: `${activeSkin.colors.primary}1A`, borderColor: activeSkin.colors.primary }]} onPress={onBack}>
+            <TouchableOpacity style={[
+              styles.quitBtn, 
+              activeSkin.uiStyle === 'cartoon' && styles.quitBtnCartoon,
+              activeSkin.colors && { backgroundColor: `${activeSkin.colors.primary}1A`, borderColor: activeSkin.colors.primary }
+            ]} onPress={onBack}>
               <Text style={[styles.quitText, activeSkin.colors && { color: activeSkin.colors.primary }]}>ABORT MISSION</Text>
             </TouchableOpacity>
           </View>
@@ -409,5 +449,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 2,
+  },
+
+  // --- CARTOON DYNAMIC STYLES ---
+  iconBtnCartoon: {
+    backgroundColor: '#fff',
+    borderColor: '#ffc0cb',
+    elevation: 2,
+  },
+  iconTextCartoon: {
+    color: '#ff8c00',
+  },
+  scoreTextCartoon: {
+    fontWeight: '900',
+    textShadowRadius: 0,
+    textShadowOffset: { width: 2, height: 2 },
+  },
+  levelTextCartoon: {
+    fontWeight: 'bold',
+  },
+  hudBoxCartoon: {
+    backgroundColor: '#fff',
+    borderColor: '#ffc0cb',
+    elevation: 3,
+  },
+  modalCardCartoon: {
+    backgroundColor: '#fff',
+    shadowColor: '#ffc0cb',
+  },
+  modalTitleCartoon: {
+    color: '#ff8c00',
+    textShadowRadius: 0,
+    textShadowOffset: { width: 3, height: 3 },
+  },
+  quitBtnCartoon: {
+    backgroundColor: '#ffe4e1',
   },
 });
