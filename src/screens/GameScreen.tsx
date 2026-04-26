@@ -137,6 +137,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
       {/* Soft Ambient Glow behind the board */}
       <View style={styles.ambientGlow} />
 
+      {/* ── GLOBAL LIGHTNING STRIKE (BEHIND THE BOARD) ── */}
+      {activeSkinId === 'goku_mosaic' && <ThunderOverlay flashOpacity={flashOpacity} />}
+
       <View style={styles.overlay}>
         <GestureDetector gesture={Gesture.Race(panGesture, tap, longPress)}>
           <View style={styles.gestureAreaFullScreen}>

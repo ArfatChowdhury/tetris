@@ -90,8 +90,9 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     const imgY = useDerivedValue(() => parallaxY.value - PARALLAX_PADDING);
     
     // The magnifier needs an additional offset to stay centered while zoomed
-    const magX = useDerivedValue(() => parallaxX.value - PARALLAX_PADDING - canvasW * 0.5);
-    const magY = useDerivedValue(() => parallaxY.value - PARALLAX_PADDING - canvasH * 0.5);
+    const magScale = skin.blockStyle.magnifierScale || 2.0;
+    const magX = useDerivedValue(() => parallaxX.value - PARALLAX_PADDING - canvasW * ((magScale - 1) / 2));
+    const magY = useDerivedValue(() => parallaxY.value - PARALLAX_PADDING - canvasH * ((magScale - 1) / 2));
 
     // Explicit clip path (Rounded Rectangle) to prevent Android rendering bleed
     const boardClipPath = useMemo(() => {
@@ -357,7 +358,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         {backgroundImage && skin.blockStyle.magnifier && (
           <Group clip={settledMaskPath}>
             {/* Base Darkened Magnifier */}
-            <Group transform={[{ scale: 2.0 }]} opacity={0.3}>
+            <Group transform={[{ scale: skin.blockStyle.magnifierScale || 2.0 }]} opacity={0.3}>
               <Image
                 image={backgroundImage}
                 x={magX} 
@@ -369,7 +370,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
             </Group>
             {/* Pulsing Heat Magnifier */}
             {skin.blockStyle.breathing && (
-              <Group transform={[{ scale: 2.0 }]} opacity={emberBreath} blendMode="screen">
+              <Group transform={[{ scale: skin.blockStyle.magnifierScale || 2.0 }]} opacity={emberBreath} blendMode="screen">
                 <Image
                   image={backgroundImage}
                   x={magX} 

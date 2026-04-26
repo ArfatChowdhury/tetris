@@ -8,9 +8,9 @@ export interface BlockStyle {
   borderColor?: string;
   opacity?: number;
   glow?: boolean;
-  glass?: boolean;
   led?: boolean;
   magnifier?: boolean;
+  magnifierScale?: number;
   breathing?: boolean;
 }
 
@@ -43,68 +43,12 @@ export const SKINS: SkinDefinition[] = [
     blockStyle: {
       glow: true,
       glass: true,
+      magnifier: true,
+      magnifierScale: 3.0,
       borderColor: 'rgba(255, 255, 255, 0.4)',
     },
     particleColor: '#00ffff',
     lineClearEffect: 'shatter',
-  },
-  {
-    id: 'goku_aura',
-    name: 'Super Saiyan Aura',
-    price: 499,
-    preview: '🌩️',
-    image: require('../assets/images/goku_mosaic_bg.png'),
-    blockStyle: {
-      glow: true,
-      glass: true,
-      borderColor: 'rgba(0, 255, 255, 0.4)',
-    },
-    particleColor: '#00ffff',
-    lineClearEffect: 'shatter',
-  },
-  {
-    id: 'minion_mosaic',
-    name: 'Master Minion',
-    price: 99,
-    preview: '🔬',
-    image: require('../assets/images/minion_mosaic_bg.png'),
-    blockStyle: {
-      glow: true,
-      glass: true,
-      led: true,
-      borderColor: 'rgba(0, 255, 0, 0.4)',
-    },
-    particleColor: '#90ee90',
-    lineClearEffect: 'explode',
-  },
-  {
-    id: 'vegeta_mosaic',
-    name: 'Cosmic Vegeta',
-    price: 199,
-    preview: '🌌',
-    image: require('../assets/images/vegeta_mosaic_bg.png'),
-    blockStyle: {
-      glow: true,
-      glass: true,
-      borderColor: 'rgba(120, 0, 255, 0.4)',
-    },
-    particleColor: '#8a2be2',
-    lineClearEffect: 'shatter',
-  },
-  {
-    id: 'villain_minion',
-    name: 'Villain Minion',
-    price: 149,
-    preview: '🦹',
-    image: require('../assets/images/villain_minion_bg.png'),
-    blockStyle: {
-      glow: true,
-      glass: true,
-      magnifier: true,
-      borderColor: 'rgba(255, 0, 0, 0.4)',
-    },
-    particleColor: '#ff0000',
-    lineClearEffect: 'dissolve',
   },
   {
     id: 'samurai_embers',
@@ -117,6 +61,7 @@ export const SKINS: SkinDefinition[] = [
       glass: true,
       breathing: true,
       magnifier: true,
+      magnifierScale: 2.0,
       borderColor: 'rgba(255, 50, 0, 0.4)',
     },
     particleColor: '#ff4500',
