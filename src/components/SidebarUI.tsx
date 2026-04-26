@@ -1,13 +1,36 @@
-import React from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { SkinDefinition } from '../constants/skins';
 import { TetrisBlock, BLOCK_SIZE as BASE_BLOCK_SIZE } from './TetrisBlock';
 import { TetrominoType, TETROMINOES } from '../constants/tetrominos';
-import { Canvas, Image, useImage, Group } from '@shopify/react-native-skia';
-import { SharedValue } from 'react-native-reanimated';
+import { Canvas, Image, useImage, Group, Circle, BlurMask } from '@shopify/react-native-skia';
+import { SharedValue, useSharedValue, withRepeat, withTiming, Easing, useDerivedValue } from 'react-native-reanimated';
 
 const { height } = Dimensions.get('window');
+
+interface SmokeParticleProps {
+  x: number;
+  y: number;
+  size: number;
+  speed: number;
+  wobble: number;
+  time: SharedValue<number>;
+}
+
+const SmokeParticle: React.FC<SmokeParticleProps> = ({ x, y, size, speed, wobble, time }) => {
+  const cx = useDerivedValue(() => x + Math.sin(time.value * 0.002 + wobble) * 10);
+  const cy = useDerivedValue(() => {
+    const currentY = y - time.value * speed;
+    return ((currentY % height) + height) % height;
+  });
+
+  return (
+    <Circle cx={cx} cy={cy} r={size} color="rgba(255, 69, 0, 0.4)">
+      <BlurMask blur={8} style="normal" />
+    </Circle>
+  );
+};
 
 interface SidebarUIProps {
   score: number;
@@ -22,6 +45,29 @@ interface SidebarUIProps {
 
 export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revealPercentage, nextPiece, skin, width, flashOpacity }) => {
   const lightningImage = useImage(require('../assets/images/dbz_lightning_strike.png'));
+
+  // --- Smoke Engine for Samurai ---
+  const smokeTime = useSharedValue(0);
+  useEffect(() => {
+    if (skin.id === 'samurai_embers') {
+      smokeTime.value = withRepeat(
+        withTiming(10000, { duration: 120000, easing: Easing.linear }),
+        -1,
+        false
+      );
+    }
+  }, [skin.id, smokeTime]);
+
+  const smokeParticles = useMemo(() => {
+    return Array.from({ length: 15 }).map((_, i) => ({
+      id: i,
+      x: Math.random() * (width || 120),
+      y: Math.random() * height,
+      size: Math.random() * 15 + 10,
+      speed: Math.random() * 0.2 + 0.1,
+      wobble: Math.random() * Math.PI * 2,
+    }));
+  }, [width]);
 
   const renderNextPiece = () => {
     if (!nextPiece) return null;
@@ -51,8 +97,8 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
   return (
     <View style={[styles.container, width ? { width } : undefined]}>
       
-      {/* ── CINEMATIC LIGHTNING FLASH ── */}
-      {flashOpacity && lightningImage && (
+      {/* ── CINEMATIC LIGHTNING FLASH (Goku Only) ── */}
+      {flashOpacity && lightningImage && skin.id === 'goku_mosaic' && (
         <View style={[StyleSheet.absoluteFill, { zIndex: -1 }]} pointerEvents="none">
           <Canvas style={{ flex: 1 }}>
             <Group 
@@ -73,8 +119,27 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
         </View>
       )}
 
+      {/* ── AMBIENT SMOKE (Samurai Only) ── */}
+      {skin.id === 'samurai_embers' && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: -1 }]} pointerEvents="none">
+          <Canvas style={{ flex: 1 }}>
+            {smokeParticles.map((p) => (
+              <SmokeParticle
+                key={p.id}
+                x={p.x}
+                y={p.y}
+                size={p.size}
+                speed={p.speed}
+                wobble={p.wobble}
+                time={smokeTime}
+              />
+            ))}
+          </Canvas>
+        </View>
+      )}
+
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>NEXT</Text>
+        <Text style={[styles.sectionTitle, { color: skin.colors?.primary || '#00BEFF', textShadowColor: (skin.colors?.primary || '#00BEFF') + '80' }]}>NEXT</Text>
       </View>
       <View style={styles.previewBox}>
         {renderNextPiece()}
@@ -95,7 +160,7 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
       </View>
 
       <View style={styles.meterContainer}>
-        <Text style={styles.meterLabel}>REVEAL</Text>
+        <Text style={[styles.meterLabel, { color: skin.colors?.primary || '#00BEFF' }]}>REVEAL</Text>
         <View style={styles.meterGauge}>
           {/* 10% Tick Marks */}
           {Array.from({ length: 9 }).map((_, i) => (
@@ -105,13 +170,13 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
             />
           ))}
           <LinearGradient
-            colors={['#004E92', '#00E5FF']}
+            colors={skin.colors ? [skin.colors.secondary, skin.colors.primary] : ['#004E92', '#00E5FF']}
             style={[styles.meterFill, { height: `${revealPercentage}%` }]}
           />
           {/* Top liquid gleam */}
-          <View style={[styles.meterGleam, { bottom: `${revealPercentage}%` }]} />
+          <View style={[styles.meterGleam, { bottom: `${revealPercentage}%`, backgroundColor: skin.colors?.accent || '#00E5FF', shadowColor: skin.colors?.accent || '#00E5FF' }]} />
         </View>
-        <Text style={styles.meterPercent}>{revealPercentage}%</Text>
+        <Text style={[styles.meterPercent, { color: skin.colors?.accent || '#00E5FF' }]}>{revealPercentage}%</Text>
       </View>
     </View>
   );

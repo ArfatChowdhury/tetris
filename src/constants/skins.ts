@@ -14,6 +14,13 @@ export interface BlockStyle {
   breathing?: boolean;
 }
 
+export interface SkinColors {
+  primary: string;
+  secondary: string;
+  accent: string;
+  background: string[];
+}
+
 export interface SkinDefinition {
   id: string;
   name: string;
@@ -23,6 +30,7 @@ export interface SkinDefinition {
   blockStyle: BlockStyle;
   particleColor: string;
   lineClearEffect: LineClearEffect;
+  colors?: SkinColors;
 }
 
 export const SKINS: SkinDefinition[] = [
@@ -113,5 +121,11 @@ export const SKINS: SkinDefinition[] = [
     },
     particleColor: '#ff4500',
     lineClearEffect: 'dissolve',
+    colors: {
+      primary: '#FF4500',
+      secondary: '#8B0000',
+      accent: '#FFD700',
+      background: ['#0A0000', '#2A0505', '#0A0000'],
+    },
   },
 ];

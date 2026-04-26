@@ -24,6 +24,8 @@ interface GameOverScreenProps {
 }
 
 export const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart, onExit }) => {
+  const { activeSkin } = useSkinStore();
+
   const handleShare = async () => {
     try {
       await Share.share({
@@ -37,38 +39,44 @@ export const GameOverScreen: React.FC<GameOverScreenProps> = ({ stats, onRestart
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={['#1a0505', '#0a0a0a', '#000000']}
+        colors={activeSkin.colors?.background || ['#1a0505', '#0a0a0a', '#000000']}
         style={StyleSheet.absoluteFillObject}
       />
       
       <View style={styles.content}>
         <Animated.View entering={FadeInUp.delay(200).springify()} style={styles.header}>
-          <Text style={styles.gameOverText}>GAME OVER</Text>
-          <View style={styles.underline} />
+          <Text style={[styles.gameOverText, activeSkin.colors && { textShadowColor: activeSkin.colors.primary }]}>GAME OVER</Text>
+          <View style={[styles.underline, activeSkin.colors && { backgroundColor: `${activeSkin.colors.primary}80` }]} />
         </Animated.View>
 
         <View style={styles.statsContainer}>
           <Animated.View entering={FadeInDown.delay(400).springify()} style={styles.statRow}>
-            <Text style={styles.statLabel}>FINAL SCORE</Text>
-            <Text style={styles.statValue}>{stats.score.toLocaleString()}</Text>
+            <Text style={[styles.statLabel, activeSkin.colors && { color: activeSkin.colors.accent }]}>FINAL SCORE</Text>
+            <Text style={[styles.statValue, activeSkin.colors && { textShadowColor: `${activeSkin.colors.primary}66` }]}>{stats.score.toLocaleString()}</Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(500).springify()} style={styles.statRow}>
-            <Text style={styles.statLabel}>LEVEL REACHED</Text>
-            <Text style={styles.statValue}>{stats.level}</Text>
+            <Text style={[styles.statLabel, activeSkin.colors && { color: activeSkin.colors.accent }]}>LEVEL REACHED</Text>
+            <Text style={[styles.statValue, activeSkin.colors && { textShadowColor: `${activeSkin.colors.primary}66` }]}>{stats.level}</Text>
           </Animated.View>
           <Animated.View entering={FadeInDown.delay(600).springify()} style={styles.statRow}>
-            <Text style={styles.statLabel}>LINES CLEARED</Text>
-            <Text style={styles.statValue}>{stats.lines}</Text>
+            <Text style={[styles.statLabel, activeSkin.colors && { color: activeSkin.colors.accent }]}>LINES CLEARED</Text>
+            <Text style={[styles.statValue, activeSkin.colors && { textShadowColor: `${activeSkin.colors.primary}66` }]}>{stats.lines}</Text>
           </Animated.View>
         </View>
 
         <Animated.View entering={FadeInDown.delay(800).springify()} style={styles.actions}>
-          <TouchableOpacity style={styles.primaryBtn} onPress={onRestart}>
+          <TouchableOpacity 
+            style={[styles.primaryBtn, activeSkin.colors && { borderColor: activeSkin.colors.primary, backgroundColor: `${activeSkin.colors.primary}1A` }]} 
+            onPress={onRestart}
+          >
             <Text style={styles.primaryBtnText}>PLAY AGAIN</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryBtn} onPress={handleShare}>
-            <Text style={styles.secondaryBtnText}>SHARE SCORE</Text>
+          <TouchableOpacity 
+            style={[styles.secondaryBtn, activeSkin.colors && { borderColor: activeSkin.colors.primary, backgroundColor: `${activeSkin.colors.primary}0D` }]} 
+            onPress={handleShare}
+          >
+            <Text style={[styles.secondaryBtnText, activeSkin.colors && { color: activeSkin.colors.primary }]}>SHARE SCORE</Text>
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.exitBtn} onPress={onExit}>

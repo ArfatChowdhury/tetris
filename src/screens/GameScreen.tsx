@@ -5,8 +5,7 @@ import { GestureHandlerRootView, GestureDetector, Gesture } from 'react-native-g
 import { runOnJS, useSharedValue, withSequence, withTiming, Easing } from 'react-native-reanimated';
 import { MosaicCanvas } from '../components/MosaicCanvas';
 import { HoldPieceBox } from '../components/HoldPieceBox';
-import { SidebarUI } from '../components/SidebarUI';
-import { SIDEBAR_WIDTH } from '../components/TetrisBlock';
+import { NextPiecePreview } from '../components/NextPiecePreview';
 import { useTetris } from '../hooks/useTetris';
 import { useSkinStore } from '../hooks/useSkinStore';
 import { TetrominoType } from '../constants/tetrominos';
@@ -30,7 +29,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
     revealMask, score, level, lines, gameState,
     onMoveLeft, onMoveRight, onMoveDown,
     onHardDrop, onRotateCW, onRotateCCW,
-    onHold, onPause, onStart
+    onHold, onSoftDropStart, onSoftDropEnd, onPause, onStart
   } = game;
 
   useEffect(() => {
@@ -98,35 +97,40 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
     return Math.floor((revealed / maxBlocks) * 100);
   }, [revealMask]);
 
-  // Gestures
-  const tapLeft = Gesture.Tap()
+  // Full-Screen Gestures
+  const tap = Gesture.Tap()
     .numberOfTaps(1)
     .onStart(() => {
-      runOnJS(onRotateCCW)();
+      runOnJS(onRotateCW)();
     });
 
   const panGesture = Gesture.Pan()
-    .onStart((e) => {})
-    .onUpdate((e) => {})
     .onEnd((e) => {
-      if (Math.abs(e.velocityX) > Math.abs(e.velocityY)) {
-        if (e.translationX > 50) runOnJS(onMoveRight)();
-        else if (e.translationX < -50) runOnJS(onMoveLeft)();
+      if (Math.abs(e.translationX) > Math.abs(e.translationY)) {
+        if (e.translationX > 30) runOnJS(onMoveRight)();
+        else if (e.translationX < -30) runOnJS(onMoveLeft)();
       } else {
-        if (e.translationY > 50) runOnJS(onMoveDown)();
-        else if (e.translationY < -50) runOnJS(onHardDrop)();
+        if (e.translationY > 50) runOnJS(onHardDrop)();
+        else if (e.translationY < -50) runOnJS(onHold)();
       }
     });
 
   const longPress = Gesture.LongPress()
+    .minDuration(150)
     .onStart(() => {
-      runOnJS(onHold)();
+      runOnJS(onSoftDropStart)();
+    })
+    .onEnd(() => {
+      runOnJS(onSoftDropEnd)();
+    })
+    .onFinalize(() => {
+      runOnJS(onSoftDropEnd)();
     });
 
   return (
     <GestureHandlerRootView style={styles.container}>
       <LinearGradient
-        colors={['#020408', '#050a18', '#0a1025']}
+        colors={activeSkin.colors?.background || ['#020408', '#050a18', '#0a1025']}
         style={StyleSheet.absoluteFillObject}
       />
       
@@ -134,21 +138,51 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
       <View style={styles.ambientGlow} />
 
       <View style={styles.overlay}>
-        {/* Top Header - Optional, for pause/hold */}
-        <View style={styles.topBar}>
-          <TouchableOpacity style={styles.backButton} onPress={onBack}>
-            <Text style={styles.backButtonText}>←</Text>
-          </TouchableOpacity>
-          <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
-          <TouchableOpacity style={styles.pauseButton} onPress={onPause}>
-            <Text style={styles.pauseText}>{gameState === 'paused' ? '▶' : 'II'}</Text>
-          </TouchableOpacity>
-        </View>
+        <GestureDetector gesture={Gesture.Race(panGesture, tap, longPress)}>
+          <View style={styles.gestureAreaFullScreen}>
+            
+            {/* ── CONSOLIDATED HEADER HUD ── */}
+            <View style={styles.headerHud}>
+              <LinearGradient
+                colors={['rgba(0,0,0,0.9)', 'transparent']}
+                style={StyleSheet.absoluteFillObject}
+              />
+              <View style={styles.headerTopRow}>
+                <TouchableOpacity style={styles.iconBtn} onPress={onBack}>
+                  <Text style={styles.iconText}>◁</Text>
+                </TouchableOpacity>
+                
+                <View style={styles.statsCenter}>
+                  <Text style={[styles.scoreText, activeSkin.colors && { color: activeSkin.colors.accent, textShadowColor: activeSkin.colors.primary }]}>
+                    {score.toLocaleString()}
+                  </Text>
+                  <Text style={[styles.levelText, activeSkin.colors && { color: activeSkin.colors.primary }]}>
+                    LEVEL {level}
+                  </Text>
+                </View>
 
-        <View style={styles.gameArea}>
-          <View style={styles.boardContainer}>
-            <GestureDetector gesture={Gesture.Race(panGesture, tapLeft, longPress)}>
-              <View style={styles.gestureArea}>
+                <TouchableOpacity style={styles.iconBtn} onPress={onPause}>
+                  <Text style={styles.iconText}>{gameState === 'paused' ? '▶' : 'II'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.headerBottomRow}>
+                <View style={[styles.hudBox, activeSkin.colors && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }]}>
+                  <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
+                </View>
+                <View style={[styles.hudBox, activeSkin.colors && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }]}>
+                  <NextPiecePreview type={nextPieceType as TetrominoType} skin={activeSkin} />
+                </View>
+              </View>
+            </View>
+
+            {/* ── FULL SCREEN CENTERED GAME BOARD ── */}
+            <View style={styles.gameAreaCentered}>
+              <View style={[
+                styles.boardContainer, 
+                { borderColor: activeSkin.colors?.secondary || 'rgba(255, 255, 255, 0.05)' },
+                activeSkinId === 'samurai_embers' && { borderWidth: 0 }
+              ]}>
                 <MosaicCanvas
                   board={board}
                   currentPiece={currentPiece}
@@ -157,60 +191,32 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
                   skin={activeSkin}
                   flashOpacity={flashOpacity}
                 />
+                {activeSkinId === 'goku_aura' && <ContinuousAuraOverlay />}
               </View>
-            </GestureDetector>
+            </View>
 
-            {/* ── EXCLUSIVE SKIN OVERLAYS ── */}
-            {activeSkinId === 'goku_aura' && <ContinuousAuraOverlay />}
+            {/* ── RESERVED SPACE FOR FUTURE BANNER AD ── */}
+            <View style={styles.adBannerSpace} />
+
           </View>
-
-          {/* Right Sidebar — fixed width so board doesn't overflow */}
-          <SidebarUI
-            score={score}
-            level={level}
-            lines={lines}
-            revealPercentage={revealPercentage}
-            nextPiece={nextPieceType as TetrominoType}
-            skin={activeSkin}
-            width={SIDEBAR_WIDTH}
-            flashOpacity={flashOpacity}
-          />
-        </View>
-
-        {/* On-screen Buttons */}
-        <View style={styles.controls}>
-          <View style={styles.leftControls}>
-            <TouchableOpacity style={styles.controlBtn} onPress={onMoveLeft}>
-              <Text style={styles.btnText}>←</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.controlBtn} onPress={onMoveRight}>
-              <Text style={styles.btnText}>→</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.centerControls}>
-            <TouchableOpacity style={styles.hardDropBtn} onPress={onHardDrop}>
-              <Text style={styles.hardDropText}>DROP</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.rightControls}>
-            <TouchableOpacity style={[styles.controlBtn, styles.rotateBtn]} onPress={onRotateCW}>
-              <Text style={styles.btnText}>↻</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        </GestureDetector>
       </View>
 
       {gameState === 'paused' && (
         <View style={styles.modal}>
-          <Text style={styles.modalTitle}>PAUSED</Text>
-          <TouchableOpacity style={styles.resumeBtn} onPress={onPause}>
-            <Text style={styles.resumeText}>RESUME</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quitBtn} onPress={onBack}>
-            <Text style={styles.quitText}>QUIT GAME</Text>
-          </TouchableOpacity>
+          <LinearGradient
+            colors={['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={[styles.modalCard, activeSkin.colors && { borderColor: `${activeSkin.colors.primary}66` }]}>
+            <Text style={[styles.modalTitle, activeSkin.colors && { textShadowColor: activeSkin.colors.primary }]}>PAUSED</Text>
+            <TouchableOpacity style={[styles.resumeBtn, activeSkin.colors && { backgroundColor: activeSkin.colors.primary }]} onPress={onPause}>
+              <Text style={styles.resumeText}>RESUME</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.quitBtn, activeSkin.colors && { backgroundColor: `${activeSkin.colors.primary}1A`, borderColor: activeSkin.colors.primary }]} onPress={onBack}>
+              <Text style={[styles.quitText, activeSkin.colors && { color: activeSkin.colors.primary }]}>ABORT MISSION</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </GestureHandlerRootView>
@@ -235,21 +241,79 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
   },
-  topBar: {
+  gestureAreaFullScreen: {
+    flex: 1,
+    width: '100%',
+  },
+  
+  // --- HEADER HUD ---
+  headerHud: {
+    paddingTop: 40, // safe area padding
+    paddingBottom: 10,
+    width: '100%',
+    zIndex: 10,
+  },
+  headerTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    marginTop: 40,
   },
-  gameArea: {
-    flex: 1,
+  statsCenter: {
+    alignItems: 'center',
+  },
+  scoreText: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#fff',
+    letterSpacing: 2,
+    textShadowColor: 'rgba(255, 255, 255, 0.5)',
+    textShadowRadius: 5,
+  },
+  levelText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#aaa',
+    letterSpacing: 1,
+    marginTop: -2,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  iconText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  headerBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingTop: 10,
+    paddingHorizontal: 40,
+    marginTop: 5,
+  },
+  hudBox: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 5,
+    transform: [{ scale: 0.8 }], // Shrink the boxes natively
+  },
+
+  // --- GAME BOARD AREA ---
+  gameAreaCentered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   boardContainer: {
-    width: '72%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.02)',
@@ -262,103 +326,61 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
     elevation: 10,
   },
-  gestureArea: {
-    flex: 1,
+  adBannerSpace: {
     width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
+    height: 60, // Standard mobile banner height
   },
-  pauseButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  pauseText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  controls: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 20,
-    paddingBottom: 40,
-  },
-  leftControls: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  rightControls: {
-    // Empty
-  },
-  centerControls: {
-    justifyContent: 'center',
-  },
-  controlBtn: {
-    width: 60,
-    height: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  rotateBtn: {
-    backgroundColor: 'rgba(0, 240, 240, 0.3)',
-    borderColor: '#00f0f0',
-    borderWidth: 1,
-  },
-  hardDropBtn: {
-    paddingHorizontal: 20,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  hardDropText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  btnText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
+
+  // --- PAUSE MODAL ---
   modal: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 100,
   },
+  modalCard: {
+    width: '80%',
+    backgroundColor: 'rgba(10, 10, 15, 0.8)',
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 40,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 30,
+    shadowOffset: { width: 0, height: 20 },
+    elevation: 20,
+  },
   modalTitle: {
     color: '#fff',
-    fontSize: 40,
+    fontSize: 42,
     fontWeight: '900',
+    letterSpacing: 8,
     marginBottom: 40,
+    textShadowColor: 'rgba(255, 255, 255, 0.5)',
+    textShadowRadius: 15,
   },
   resumeBtn: {
-    width: 200,
+    width: '100%',
     height: 60,
     backgroundColor: '#fff',
-    borderRadius: 30,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 15,
   },
   resumeText: {
     color: '#000',
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: 4,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 20,
+    width: 45,
+    height: 45,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 22.5,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -370,19 +392,19 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   quitBtn: {
-    marginTop: 20,
-    width: 200,
+    width: '100%',
     height: 50,
-    backgroundColor: 'rgba(255, 50, 50, 0.2)',
-    borderRadius: 25,
+    backgroundColor: 'rgba(255, 50, 50, 0.1)',
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 50, 50, 0.5)',
+    borderColor: 'rgba(255, 50, 50, 0.4)',
   },
   quitText: {
     color: '#ff5555',
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
 });

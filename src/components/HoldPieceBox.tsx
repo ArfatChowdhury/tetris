@@ -16,7 +16,7 @@ export const HoldPieceBox: React.FC<HoldPieceBoxProps> = React.memo(({ type, ski
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>HOLD</Text>
+      <Text style={[styles.title, skin.colors && { color: skin.colors.primary }]}>HOLD</Text>
       <View style={styles.previewBox}>
         {definition ? (
           definition.shape.map((row, y) => (

@@ -30,6 +30,7 @@ export const useTetris = (activeSkinId: string) => {
   const [level, setLevel] = useState(1);
   const [lines, setLines] = useState(0);
   const [gameState, setGameState] = useState<GameState>('idle');
+  const [isSoftDropping, setIsSoftDropping] = useState(false);
   const [ghostY, setGhostY] = useState(0);
   // Persistent reveal mask — only ever gains cells, never loses them
   const [revealMask, setRevealMask] = useState<boolean[][]>(
@@ -46,6 +47,7 @@ export const useTetris = (activeSkinId: string) => {
   const levelRef = useRef(1);
   const linesRef = useRef(0);
   const gameStateRef = useRef<GameState>('idle');
+  const isSoftDroppingRef = useRef(false);
   const activeSkinIdRef = useRef(activeSkinId);
   const revealMaskRef = useRef<boolean[][]>(
     Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(false))
@@ -60,6 +62,7 @@ export const useTetris = (activeSkinId: string) => {
   useEffect(() => { levelRef.current = level; }, [level]);
   useEffect(() => { linesRef.current = lines; }, [lines]);
   useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  useEffect(() => { isSoftDroppingRef.current = isSoftDropping; }, [isSoftDropping]);
   useEffect(() => { activeSkinIdRef.current = activeSkinId; }, [activeSkinId]);
   useEffect(() => { revealMaskRef.current = revealMask; }, [revealMask]);
 
@@ -324,6 +327,18 @@ export const useTetris = (activeSkinId: string) => {
     spawnPieceInternal(boardRef.current, typeToSpawn ?? undefined);
   }, []); // stable
 
+  const startSoftDrop = useCallback(() => {
+    if (gameStateRef.current === 'playing') {
+      setIsSoftDropping(true);
+      isSoftDroppingRef.current = true;
+    }
+  }, []);
+
+  const stopSoftDrop = useCallback(() => {
+    setIsSoftDropping(false);
+    isSoftDroppingRef.current = false;
+  }, []);
+
   // --- Game Loop: reads from ref, always fresh ---
   const tick = useRef(() => {
     if (gameStateRef.current === 'playing') {
@@ -341,7 +356,8 @@ export const useTetris = (activeSkinId: string) => {
 
   useEffect(() => {
     if (gameState === 'playing') {
-      const speed = LEVEL_SPEEDS[level - 1] ?? 800;
+      const normalSpeed = LEVEL_SPEEDS[level - 1] ?? 800;
+      const speed = isSoftDropping ? 50 : normalSpeed;
       gameLoopRef.current = setInterval(() => tick.current(), speed);
     } else {
       if (gameLoopRef.current) clearInterval(gameLoopRef.current);
@@ -350,7 +366,7 @@ export const useTetris = (activeSkinId: string) => {
       if (gameLoopRef.current) clearInterval(gameLoopRef.current);
       if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
     };
-  }, [gameState, level]);
+  }, [gameState, level, isSoftDropping]);
 
   const startGame = useCallback(() => {
     const emptyBoard = TetrisEngine.createEmptyBoard();
@@ -409,6 +425,8 @@ export const useTetris = (activeSkinId: string) => {
     onRotateCW: useCallback(() => rotatePiece('CW'), [rotatePiece]),
     onRotateCCW: useCallback(() => rotatePiece('CCW'), [rotatePiece]),
     onHold: holdPiece,
+    onSoftDropStart: startSoftDrop,
+    onSoftDropEnd: stopSoftDrop,
     onStart: startGame,
     onPause: pauseGame,
   };

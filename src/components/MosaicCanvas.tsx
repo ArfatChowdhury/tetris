@@ -80,6 +80,30 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     const backgroundImage = useImage(skin.image);
     const { parallaxX, parallaxY } = useParallax();
 
+    // --- Parallax Overscan Padding ---
+    // We render the image slightly larger than the canvas so tilting doesn't reveal black borders
+    const PARALLAX_PADDING = 25;
+    const imgWidth = canvasW + PARALLAX_PADDING * 2;
+    const imgHeight = canvasH + PARALLAX_PADDING * 2;
+    
+    const imgX = useDerivedValue(() => parallaxX.value - PARALLAX_PADDING);
+    const imgY = useDerivedValue(() => parallaxY.value - PARALLAX_PADDING);
+    
+    // The magnifier needs an additional offset to stay centered while zoomed
+    const magX = useDerivedValue(() => parallaxX.value - PARALLAX_PADDING - canvasW * 0.5);
+    const magY = useDerivedValue(() => parallaxY.value - PARALLAX_PADDING - canvasH * 0.5);
+
+    // Explicit clip path (Rounded Rectangle) to prevent Android rendering bleed
+    const boardClipPath = useMemo(() => {
+      const path = Skia.Path.Make();
+      path.addRRect({
+        rect: { x: 0, y: 0, width: canvasW, height: canvasH },
+        rx: 8,
+        ry: 8,
+      });
+      return path;
+    }, [canvasW, canvasH]);
+
     // --- Breathing Embers Engine ---
     const emberBreath = useSharedValue(0.1);
     
@@ -238,87 +262,92 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
     return (
       <Canvas style={{ width: canvasW, height: canvasH }}>
-        {/* ── ATMOSPHERIC BASE: The "Glass Plinth" — Gives the board a heavy, premium feel ── */}
-        <Rect x={0} y={0} width={canvasW} height={canvasH} color="#050810" />
-        <Rect x={0} y={0} width={canvasW} height={canvasH}>
-          <LinearGradient
-            start={vec(0, 0)}
-            end={vec(canvasW, canvasH)}
-            colors={['#0A1020', '#050810']}
-          />
-        </Rect>
+        {/* ── MASTER CLIP GROUP ── */}
+        {/* Everything inside the Canvas is strictly clipped to this 8px rounded rectangle */}
+        <Group clip={boardClipPath}>
 
-        {/* ── DIAGNOSTIC FALLBACK: If image fails to load, show red background ── */}
-        {!backgroundImage && (
-          <Rect x={0} y={0} width={canvasW} height={canvasH} color="#FF00324D" />
-        )}
-
-        {/* ── LAYER 0: Faint, Bleak Black & White Background ── */}
-        {backgroundImage && (
-          <Group opacity={0.15}>
-            <ColorMatrix matrix={BLACK_AND_WHITE} />
-            <Image
-              image={backgroundImage}
-              x={parallaxX}
-              y={parallaxY}
-              width={canvasW}
-              height={canvasH}
-              fit="cover"
+          {/* ── ATMOSPHERIC BASE: The "Glass Plinth" — Gives the board a heavy, premium feel ── */}
+          <Rect x={0} y={0} width={canvasW} height={canvasH} color="#050810" />
+          <Rect x={0} y={0} width={canvasW} height={canvasH}>
+            <LinearGradient
+              start={vec(0, 0)}
+              end={vec(canvasW, canvasH)}
+              colors={['#0A1020', '#050810']}
             />
-          </Group>
-        )}
+          </Rect>
 
-        {/* ── LAYER 0.5: Cinematic Room Flash (Synchronized with Sidebar Lightning) ── */}
-        {backgroundImage && flashOpacity && (
-          <Group opacity={flashOpacity} blendMode="screen">
-            <Image
-              image={backgroundImage}
-              x={parallaxX}
-              y={parallaxY}
-              width={canvasW}
-              height={canvasH}
-              fit="cover"
+          {/* ── DIAGNOSTIC FALLBACK: If image fails to load, show red background ── */}
+          {!backgroundImage && (
+            <Rect x={0} y={0} width={canvasW} height={canvasH} color="#FF00324D" />
+          )}
+
+
+          {/* ── LAYER 0: Faint, Bleak Black & White Background ── */}
+          {backgroundImage && (
+            <Group opacity={0.15}>
+              <ColorMatrix matrix={BLACK_AND_WHITE} />
+              <Image
+                image={backgroundImage}
+                x={imgX}
+                y={imgY}
+                width={imgWidth}
+                height={imgHeight}
+                fit="cover"
+              />
+            </Group>
+          )}
+
+          {/* ── LAYER 0.5: Cinematic Room Flash (Synchronized with Sidebar Lightning) ── */}
+          {backgroundImage && flashOpacity && (
+            <Group opacity={flashOpacity} blendMode="screen">
+              <Image
+                image={backgroundImage}
+                x={imgX}
+                y={imgY}
+                width={imgWidth}
+                height={imgHeight}
+                fit="cover"
+              />
+            </Group>
+          )}
+
+          {/* ── LAYER 0.75: Breathing Embers (Continuous Heat Pulse) ── */}
+          {backgroundImage && skin.blockStyle.breathing && (
+            <Group opacity={emberBreath} blendMode="screen">
+              <Image
+                image={backgroundImage}
+                x={imgX}
+                y={imgY}
+                width={imgWidth}
+                height={imgHeight}
+                fit="cover"
+              />
+            </Group>
+          )}
+
+          {/* ── LAYER 0.8: Ash Particles ── */}
+          {skin.blockStyle.breathing && ashParticles.map((p) => (
+            <AshParticle
+              key={p.id}
+              x={p.x}
+              y={p.y}
+              size={p.size}
+              speed={p.speed}
+              wobble={p.wobble}
+              time={ashTime}
+              canvasH={canvasH}
             />
-          </Group>
-        )}
-
-        {/* ── LAYER 0.75: Breathing Embers (Continuous Heat Pulse) ── */}
-        {backgroundImage && skin.blockStyle.breathing && (
-          <Group opacity={emberBreath} blendMode="screen">
-            <Image
-              image={backgroundImage}
-              x={parallaxX}
-              y={parallaxY}
-              width={canvasW}
-              height={canvasH}
-              fit="cover"
-            />
-          </Group>
-        )}
-
-        {/* ── LAYER 0.8: Ash Particles ── */}
-        {skin.blockStyle.breathing && ashParticles.map((p) => (
-          <AshParticle
-            key={p.id}
-            x={p.x}
-            y={p.y}
-            size={p.size}
-            speed={p.speed}
-            wobble={p.wobble}
-            time={ashTime}
-            canvasH={canvasH}
-          />
-        ))}
+          ))}
 
         {/* ── LAYER 1: Vivid image — revealed only through the permanent revealMask ── */}
         {backgroundImage && (
           <Group clip={settledMaskPath}>
             <Image
               image={backgroundImage}
-              x={parallaxX}
-              y={parallaxY}
-              width={canvasW}
-              height={canvasH}
+              x={imgX}
+              y={imgY}
+              width={imgWidth}
+              height={imgHeight}
               fit="cover"
             />
           </Group>
@@ -331,10 +360,10 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
             <Group transform={[{ scale: 2.0 }]} opacity={0.3}>
               <Image
                 image={backgroundImage}
-                x={parallaxX - (canvasW * 0.5)} 
-                y={parallaxY - (canvasH * 0.5)}
-                width={canvasW}
-                height={canvasH}
+                x={magX} 
+                y={magY}
+                width={imgWidth}
+                height={imgHeight}
                 fit="cover"
               />
             </Group>
@@ -343,10 +372,10 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
               <Group transform={[{ scale: 2.0 }]} opacity={emberBreath} blendMode="screen">
                 <Image
                   image={backgroundImage}
-                  x={parallaxX - (canvasW * 0.5)} 
-                  y={parallaxY - (canvasH * 0.5)}
-                  width={canvasW}
-                  height={canvasH}
+                  x={magX} 
+                  y={magY}
+                  width={imgWidth}
+                  height={imgHeight}
                   fit="cover"
                 />
               </Group>
@@ -455,20 +484,31 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           ))
         )}
 
-        {/* ── LAYER 4: Ghost piece — hollow crystal outline ── */}
+        {/* ── LAYER 4: Holographic Ghost Piece ("The Plan") ── */}
         {ghostCells.map(({ x, y }) => {
           const bx = x * BLOCK_SIZE;
           const by = y * BLOCK_SIZE;
           return (
-            <RoundedRect
-              key={`ghost-${x}-${y}`}
-              x={bx + 2} y={by + 2}
-              width={BLOCK_SIZE - 4} height={BLOCK_SIZE - 4}
-              r={CORNER_RADIUS}
-              color="transparent"
-            >
-              <Paint style="stroke" strokeWidth={1.2} color="#78D2FF61" />
-            </RoundedRect>
+            <Group key={`ghost-${x}-${y}`}>
+              {/* Glowing Holographic Core */}
+              <RoundedRect
+                x={bx + 1} y={by + 1}
+                width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                r={CORNER_RADIUS}
+                color={skin.colors?.primary ? `${skin.colors.primary}4D` : '#78D2FF4D'}
+              >
+                <BlurMask blur={4} style="normal" />
+              </RoundedRect>
+              {/* Sharp Holographic Border */}
+              <RoundedRect
+                x={bx + 1} y={by + 1}
+                width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                r={CORNER_RADIUS}
+                color="transparent"
+              >
+                <Paint style="stroke" strokeWidth={2} color={skin.colors?.primary ? `${skin.colors.primary}CC` : '#78D2FFCC'} />
+              </RoundedRect>
+            </Group>
           );
         })}
 
@@ -535,6 +575,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           );
         })}
 
+        </Group>
       </Canvas>
     );
   }
