@@ -12,6 +12,7 @@ import { TetrominoType } from '../constants/tetrominos';
 import { BOARD_WIDTH, BOARD_HEIGHT } from '../constants/gameConfig';
 import { ThunderOverlay } from '../components/ThunderOverlay';
 import { ContinuousAuraOverlay } from '../components/ContinuousAuraOverlay';
+import { AmbientParticleSystem } from '../components/AmbientParticleSystem';
 
 const { width } = Dimensions.get('window');
 
@@ -136,7 +137,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
       <LinearGradient
         colors={
           activeSkin.colors?.background || 
-          (activeSkin.uiStyle === 'cartoon' ? ['#FFF0F5', '#FFC0CB', '#FFF0F5'] : ['#020408', '#050a18', '#0a1025'])
+          (activeSkin.uiStyle === 'neumorphic' ? ['#FFF0F5', '#FFC0CB', '#FFF0F5'] : ['#020408', '#050a18', '#0a1025'])
         }
         style={StyleSheet.absoluteFillObject}
       />
@@ -151,53 +152,72 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
         <GestureDetector gesture={Gesture.Race(panGesture, tap, longPress)}>
           <View style={styles.gestureAreaFullScreen}>
             
-            {/* ── CONSOLIDATED HEADER HUD ── */}
-            <View style={styles.headerHud}>
-              {activeSkin.uiStyle !== 'cartoon' && (
-                <LinearGradient
-                  colors={['rgba(0,0,0,0.9)', 'transparent']}
-                  style={StyleSheet.absoluteFillObject}
-                />
-              )}
-              <View style={styles.headerTopRow}>
-                <TouchableOpacity style={[styles.iconBtn, activeSkin.uiStyle === 'cartoon' && styles.iconBtnCartoon]} onPress={onBack}>
-                  <Text style={[styles.iconText, activeSkin.uiStyle === 'cartoon' && styles.iconTextCartoon]}>◁</Text>
-                </TouchableOpacity>
-                
-                <View style={styles.statsCenter}>
-                  <Text style={[
-                    styles.scoreText, 
-                    activeSkin.uiStyle === 'cartoon' && styles.scoreTextCartoon,
-                    activeSkin.colors && { color: activeSkin.colors.accent, textShadowColor: activeSkin.colors.primary }
-                  ]}>
-                    {score.toLocaleString()}
-                  </Text>
-                  <Text style={[
-                    styles.levelText, 
-                    activeSkin.uiStyle === 'cartoon' && styles.levelTextCartoon,
-                    activeSkin.colors && { color: activeSkin.colors.primary }
-                  ]}>
+              <View style={styles.headerHud}>
+                {activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && (
+                  <LinearGradient
+                    colors={['rgba(0,0,0,0.9)', 'transparent']}
+                    style={StyleSheet.absoluteFillObject}
+                  />
+                )}
+                <View style={styles.headerTopRow}>
+                  <TouchableOpacity style={[
+                    styles.iconBtn, 
+                    activeSkin.uiStyle === 'neumorphic' && styles.iconBtnNeumorphic,
+                    activeSkin.uiStyle === 'kawaii' && styles.iconBtnKawaii
+                  ]} onPress={onBack}>
+                    <Text style={[
+                      styles.iconText, 
+                      activeSkin.uiStyle === 'neumorphic' && styles.iconTextNeumorphic,
+                      activeSkin.uiStyle === 'kawaii' && styles.iconTextKawaii
+                    ]}>◁</Text>
+                  </TouchableOpacity>
+                  
+                  <View style={styles.statsCenter}>
+                    <Text style={[
+                      styles.scoreText, 
+                      activeSkin.uiStyle === 'neumorphic' && styles.scoreTextNeumorphic,
+                      activeSkin.uiStyle === 'kawaii' && styles.scoreTextKawaii,
+                      activeSkin.colors && { color: activeSkin.colors.accent, textShadowColor: activeSkin.uiStyle === 'neumorphic' || activeSkin.uiStyle === 'kawaii' ? 'transparent' : activeSkin.colors.primary }
+                    ]}>
+                      {score.toLocaleString()}
+                    </Text>
+                    <Text style={[
+                      styles.levelText, 
+                      activeSkin.uiStyle === 'neumorphic' && styles.levelTextNeumorphic,
+                      activeSkin.uiStyle === 'kawaii' && styles.levelTextKawaii,
+                      activeSkin.colors && { color: activeSkin.colors.primary }
+                    ]}>
                     LEVEL {level}
                   </Text>
                 </View>
 
-                <TouchableOpacity style={[styles.iconBtn, activeSkin.uiStyle === 'cartoon' && styles.iconBtnCartoon]} onPress={onPause}>
-                  <Text style={[styles.iconText, activeSkin.uiStyle === 'cartoon' && styles.iconTextCartoon]}>{gameState === 'paused' ? '▶' : 'II'}</Text>
+                <TouchableOpacity style={[
+                  styles.iconBtn, 
+                  activeSkin.uiStyle === 'neumorphic' && styles.iconBtnNeumorphic,
+                  activeSkin.uiStyle === 'kawaii' && styles.iconBtnKawaii
+                ]} onPress={onPause}>
+                  <Text style={[
+                    styles.iconText, 
+                    activeSkin.uiStyle === 'neumorphic' && styles.iconTextNeumorphic,
+                    activeSkin.uiStyle === 'kawaii' && styles.iconTextKawaii
+                  ]}>{gameState === 'paused' ? '▶' : 'II'}</Text>
                 </TouchableOpacity>
               </View>
 
               <View style={styles.headerBottomRow}>
                 <View style={[
                   styles.hudBox, 
-                  activeSkin.uiStyle === 'cartoon' && styles.hudBoxCartoon,
-                  activeSkin.colors && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }
+                  activeSkin.uiStyle === 'neumorphic' && [styles.hudBoxNeumorphic, { shadowColor: activeSkin.colors?.primary || '#ffc0cb' }],
+                  activeSkin.uiStyle === 'kawaii' && styles.hudBoxKawaii,
+                  activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }
                 ]}>
                   <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
                 </View>
                 <View style={[
                   styles.hudBox, 
-                  activeSkin.uiStyle === 'cartoon' && styles.hudBoxCartoon,
-                  activeSkin.colors && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }
+                  activeSkin.uiStyle === 'neumorphic' && [styles.hudBoxNeumorphic, { shadowColor: activeSkin.colors?.primary || '#ffc0cb' }],
+                  activeSkin.uiStyle === 'kawaii' && styles.hudBoxKawaii,
+                  activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { borderColor: `${activeSkin.colors.primary}40`, backgroundColor: `${activeSkin.colors.primary}0D` }
                 ]}>
                   <NextPiecePreview type={nextPieceType as TetrominoType} skin={activeSkin} />
                 </View>
@@ -209,7 +229,8 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
               <View style={[
                 styles.boardContainer, 
                 { borderColor: activeSkin.colors?.secondary || 'rgba(255, 255, 255, 0.05)' },
-                activeSkinId === 'samurai_embers' && { borderWidth: 0 }
+                (activeSkinId === 'samurai_embers' || activeSkin.uiStyle === 'neumorphic' || activeSkin.uiStyle === 'kawaii') && { borderWidth: 0 },
+                (activeSkin.uiStyle === 'neumorphic' || activeSkin.uiStyle === 'kawaii') && { backgroundColor: 'transparent', shadowOpacity: 0, elevation: 0 }
               ]}>
                 <MosaicCanvas
                   board={board}
@@ -226,6 +247,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
             {/* ── RESERVED SPACE FOR FUTURE BANNER AD ── */}
             <View style={styles.adBannerSpace} />
 
+            {/* ── FULL SCREEN PHYSICS PARTICLES ── */}
+            <AmbientParticleSystem skin={activeSkin} />
+
           </View>
         </GestureDetector>
       </View>
@@ -233,31 +257,44 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
       {gameState === 'paused' && (
         <View style={styles.modal}>
           <LinearGradient
-            colors={activeSkin.uiStyle === 'cartoon' ? ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.95)'] : ['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
+            colors={activeSkin.uiStyle === 'neumorphic' ? ['rgba(255,255,255,0.4)', 'rgba(255,255,255,0.8)'] : ['rgba(0,0,0,0.7)', 'rgba(0,0,0,0.95)']}
             style={StyleSheet.absoluteFillObject}
           />
           <View style={[
             styles.modalCard, 
-            activeSkin.uiStyle === 'cartoon' && styles.modalCardCartoon,
-            activeSkin.colors && { borderColor: `${activeSkin.colors.primary}66` }
+            activeSkin.uiStyle === 'neumorphic' && [styles.modalCardNeumorphic, { shadowColor: activeSkin.colors?.primary || '#ffc0cb' }],
+            activeSkin.uiStyle === 'kawaii' && styles.modalCardKawaii,
+            activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { borderColor: `${activeSkin.colors.primary}66` }
           ]}>
             <Text style={[
               styles.modalTitle, 
-              activeSkin.uiStyle === 'cartoon' && styles.modalTitleCartoon,
-              activeSkin.colors && { textShadowColor: activeSkin.colors.primary }
+              activeSkin.uiStyle === 'neumorphic' && styles.modalTitleNeumorphic,
+              activeSkin.uiStyle === 'kawaii' && styles.modalTitleKawaii,
+              activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { textShadowColor: activeSkin.colors.primary }
             ]}>PAUSED</Text>
             <TouchableOpacity style={[
               styles.resumeBtn, 
-              activeSkin.colors && { backgroundColor: activeSkin.colors.primary }
+              activeSkin.uiStyle === 'neumorphic' && [styles.resumeBtnNeumorphic, { shadowColor: activeSkin.colors?.primary || '#ffc0cb' }],
+              activeSkin.uiStyle === 'kawaii' && styles.resumeBtnKawaii,
+              activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { backgroundColor: activeSkin.colors.primary }
             ]} onPress={onPause}>
-              <Text style={[styles.resumeText, activeSkin.uiStyle === 'cartoon' && { color: '#fff' }]}>RESUME</Text>
+              <Text style={[
+                styles.resumeText, 
+                activeSkin.uiStyle === 'neumorphic' && { color: activeSkin.colors?.primary || '#ff8c00' },
+                activeSkin.uiStyle === 'kawaii' && { color: '#FF8C00' }
+              ]}>RESUME</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[
               styles.quitBtn, 
-              activeSkin.uiStyle === 'cartoon' && styles.quitBtnCartoon,
-              activeSkin.colors && { backgroundColor: `${activeSkin.colors.primary}1A`, borderColor: activeSkin.colors.primary }
+              activeSkin.uiStyle === 'neumorphic' && styles.quitBtnNeumorphic,
+              activeSkin.uiStyle === 'kawaii' && styles.quitBtnKawaii,
+              activeSkin.colors && activeSkin.uiStyle !== 'neumorphic' && activeSkin.uiStyle !== 'kawaii' && { backgroundColor: `${activeSkin.colors.primary}1A`, borderColor: activeSkin.colors.primary }
             ]} onPress={onBack}>
-              <Text style={[styles.quitText, activeSkin.colors && { color: activeSkin.colors.primary }]}>ABORT MISSION</Text>
+              <Text style={[
+                styles.quitText, 
+                activeSkin.colors && activeSkin.uiStyle !== 'kawaii' && { color: activeSkin.colors.primary },
+                activeSkin.uiStyle === 'kawaii' && { color: '#FF8C00' }
+              ]}>ABORT MISSION</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -419,21 +456,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: 4,
   },
-  backButton: {
-    width: 45,
-    height: 45,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderRadius: 22.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  backButtonText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
   quitBtn: {
     width: '100%',
     height: 50,
@@ -451,38 +473,124 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
 
-  // --- CARTOON DYNAMIC STYLES ---
-  iconBtnCartoon: {
-    backgroundColor: '#fff',
-    borderColor: '#ffc0cb',
-    elevation: 2,
-  },
-  iconTextCartoon: {
-    color: '#ff8c00',
-  },
-  scoreTextCartoon: {
-    fontWeight: '900',
-    textShadowRadius: 0,
-    textShadowOffset: { width: 2, height: 2 },
-  },
-  levelTextCartoon: {
-    fontWeight: 'bold',
-  },
-  hudBoxCartoon: {
-    backgroundColor: '#fff',
-    borderColor: '#ffc0cb',
+  // --- PAPER CUT-OUT NEUMORPHIC STYLES ---
+  iconBtnNeumorphic: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderWidth: 0,
+    shadowOffset: { width: 3, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 1,
     elevation: 3,
   },
-  modalCardCartoon: {
-    backgroundColor: '#fff',
-    shadowColor: '#ffc0cb',
+  iconTextNeumorphic: {
+    color: '#ff8c00',
   },
-  modalTitleCartoon: {
+  scoreTextNeumorphic: {
+    fontWeight: '900',
+    textShadowRadius: 0,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+  levelTextNeumorphic: {
+    fontWeight: 'bold',
+  },
+  hudBoxNeumorphic: {
+    backgroundColor: 'rgba(255,255,255,0.85)',
+    borderWidth: 0,
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 4,
+  },
+  modalCardNeumorphic: {
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    borderWidth: 0,
+    shadowOffset: { width: 6, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 8,
+  },
+  modalTitleNeumorphic: {
     color: '#ff8c00',
     textShadowRadius: 0,
-    textShadowOffset: { width: 3, height: 3 },
+    textShadowOffset: { width: 0, height: 0 },
   },
-  quitBtnCartoon: {
-    backgroundColor: '#ffe4e1',
+  resumeBtnNeumorphic: {
+    backgroundColor: '#fff',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 1,
+    elevation: 4,
+  },
+  quitBtnNeumorphic: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+  },
+
+  // --- KAWAII STICKER STYLES ---
+  iconBtnKawaii: {
+    backgroundColor: '#FFE4E1',
+    borderWidth: 3,
+    borderColor: '#FF8C00',
+    borderStyle: 'dashed',
+    borderRadius: 25,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  iconTextKawaii: {
+    color: '#FF8C00',
+    fontWeight: '900',
+  },
+  scoreTextKawaii: {
+    fontWeight: '900',
+    textShadowRadius: 0,
+    color: '#FF8C00',
+  },
+  levelTextKawaii: {
+    fontWeight: 'bold',
+    color: '#FF69B4',
+  },
+  hudBoxKawaii: {
+    backgroundColor: '#FFE4E1',
+    borderWidth: 3,
+    borderColor: '#FF8C00',
+    borderStyle: 'dashed',
+    borderRadius: 20,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  hudTitleKawaii: {
+    color: '#FF8C00',
+    fontWeight: '900',
+    marginBottom: 2,
+  },
+  modalCardKawaii: {
+    backgroundColor: '#FFE4E1',
+    borderWidth: 4,
+    borderStyle: 'dashed',
+    borderColor: '#FF8C00',
+    borderRadius: 30,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  modalTitleKawaii: {
+    color: '#FF8C00',
+    textShadowRadius: 0,
+    fontWeight: '900',
+  },
+  resumeBtnKawaii: {
+    backgroundColor: '#FFF',
+    borderWidth: 3,
+    borderStyle: 'dashed',
+    borderColor: '#FF8C00',
+    borderRadius: 50,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  quitBtnKawaii: {
+    backgroundColor: 'transparent',
+    borderWidth: 3,
+    borderStyle: 'dashed',
+    borderColor: '#FF8C00',
+    borderRadius: 50,
   },
 });

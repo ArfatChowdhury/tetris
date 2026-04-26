@@ -15,6 +15,9 @@ import {
   ColorMatrix,
   Skia,
   Circle,
+  FractalNoise,
+  Shadow,
+  FillType,
 } from '@shopify/react-native-skia';
 import { Board, Piece } from '../systems/TetrisEngine';
 import { SkinDefinition } from '../constants/skins';
@@ -39,49 +42,7 @@ const BLACK_AND_WHITE = [
   0,      0,      0,      1, 0,
 ];
 
-interface AshParticleProps {
-  x: number;
-  y: number;
-  size: number;
-  speed: number;
-  wobble: number;
-  time: SharedValue<number>;
-  canvasH: number;
-  image?: any;
-}
 
-const AshParticle: React.FC<AshParticleProps> = ({ x, y, size, speed, wobble, time, canvasH, image }) => {
-  const cx = useDerivedValue(() => {
-    return x + Math.sin(time.value * 0.005 + wobble) * 15;
-  });
-  const cy = useDerivedValue(() => {
-    // If it's an image (heart), fall down like snow (+). If ash, float up (-).
-    const currentY = image ? y + time.value * speed : y - time.value * speed;
-    return ((currentY % canvasH) + canvasH) % canvasH;
-  });
-
-  const imgSize = size * 6; // Make hearts larger than ash
-  const imgTransform = useDerivedValue(() => {
-    return [
-      { translateX: cx.value - imgSize / 2 },
-      { translateY: cy.value - imgSize / 2 }
-    ];
-  });
-
-  if (image) {
-    return (
-      <Group transform={imgTransform}>
-        <Image image={image} x={0} y={0} width={imgSize} height={imgSize} fit="contain" />
-      </Group>
-    );
-  }
-
-  return (
-    <Circle cx={cx} cy={cy} r={size} color="#FF6600">
-      <BlurMask blur={3} style="normal" />
-    </Circle>
-  );
-};
 
 export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
   ({ board, currentPiece, ghostY, revealMask, skin, flashOpacity }) => {
@@ -103,11 +64,16 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     // --- Parallax Overscan Padding ---
     // We render the image slightly larger than the canvas so tilting doesn't reveal black borders
     const PARALLAX_PADDING = 25;
-    const imgWidth = canvasW + PARALLAX_PADDING * 2;
-    const imgHeight = canvasH + PARALLAX_PADDING * 2;
+    const scale = skin.imageScale || 1.0;
+    const baseW = canvasW + PARALLAX_PADDING * 2;
+    const baseH = canvasH + PARALLAX_PADDING * 2;
+    const imgWidth = baseW * scale;
+    const imgHeight = baseH * scale;
     
-    const imgX = useDerivedValue(() => parallaxX.value - PARALLAX_PADDING);
-    const imgY = useDerivedValue(() => parallaxY.value - PARALLAX_PADDING);
+    const offsetX = (baseW - imgWidth) / 2;
+    const offsetY = (baseH - imgHeight) / 2;
+    const imgX = useDerivedValue(() => parallaxX.value - PARALLAX_PADDING + offsetX);
+    const imgY = useDerivedValue(() => parallaxY.value - PARALLAX_PADDING + offsetY);
     
     // The magnifier needs an additional offset to stay centered while zoomed
     const magScale = skin.blockStyle.magnifierScale || 2.0;
@@ -123,6 +89,41 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         ry: 8,
       });
       return path;
+    }, [canvasW, canvasH]);
+
+    // Generate static water droplets for condensation effect
+    const waterDroplets = useMemo(() => {
+      if (!skin.waterDroplets) return [];
+      return Array.from({ length: 40 }).map((_, i) => ({
+        id: i,
+        x: Math.random() * canvasW,
+        y: Math.random() * canvasH,
+        r: Math.random() * 4 + 3, // Size of droplets
+      }));
+    }, [skin.waterDroplets, canvasW, canvasH]);
+
+    const dropletClipPath = useMemo(() => {
+      const p = Skia.Path.Make();
+      if (!skin.waterDroplets) return p;
+      waterDroplets.forEach(d => {
+        p.addCircle(d.x, d.y, d.r);
+      });
+      return p;
+    }, [waterDroplets, skin.waterDroplets]);
+
+    // Neumorphic Inset Frame Path (EvenOdd window)
+    const insetFramePath = useMemo(() => {
+      const p = Skia.Path.Make();
+      p.setFillType(FillType.EvenOdd);
+      // Outer rect far outside the canvas bounds
+      p.addRect({ x: -50, y: -50, width: canvasW + 100, height: canvasH + 100 });
+      // Inner hole exactly matching the board
+      p.addRRect({
+        rect: { x: 0, y: 0, width: canvasW, height: canvasH },
+        rx: 8,
+        ry: 8,
+      });
+      return p;
     }, [canvasW, canvasH]);
 
     // --- Breathing Embers Engine ---
@@ -141,29 +142,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
       }
     }, [skin.blockStyle.breathing, emberBreath]);
 
-    // --- Ash Particle Engine ---
-    const ashTime = useSharedValue(0);
-    useEffect(() => {
-      if (skin.particles === 'ash' || skin.particles === 'hearts') {
-        ashTime.value = withRepeat(
-          withTiming(5000, { duration: 60000, easing: Easing.linear }),
-          -1,
-          false
-        );
-      }
-    }, [skin.particles, ashTime]);
 
-    const ashParticles = useMemo(() => {
-      const isHearts = skin.particles === 'hearts';
-      return Array.from({ length: isHearts ? 15 : 25 }).map((_, i) => ({
-        id: i,
-        x: Math.random() * canvasW,
-        y: Math.random() * canvasH,
-        size: isHearts ? Math.random() * 2 + 1.5 : Math.random() * 2 + 1,
-        speed: isHearts ? Math.random() * 0.15 + 0.05 : Math.random() * 0.4 + 0.2,
-        wobble: Math.random() * Math.PI * 2,
-      }));
-    }, [canvasW, canvasH, skin.particles]);
 
     // --- Dynamic Mask path: Derived from CURRENT board state + currentPiece ---
     // The image ONLY shows where blocks exist. When a row clears, the image clears.
@@ -290,7 +269,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
           {/* ── ATMOSPHERIC BASE: The "Glass Plinth" OR "Clay Cartoon" ── */}
           {skin.blockStyle.marshmallow ? (
-            <RoundedRect x={0} y={0} width={canvasW} height={canvasH} color="#FFE4E1" r={16} />
+            <RoundedRect x={0} y={0} width={canvasW} height={canvasH} color={skin.colors?.background?.[0] || '#FFE4E1'} r={8} />
           ) : (
             <Group>
               <Rect x={0} y={0} width={canvasW} height={canvasH} color="#050810" />
@@ -353,24 +332,11 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
             </Group>
           )}
 
-          {/* ── LAYER 0.8: Ambient Particles (Ash or Hearts) ── */}
-          {(skin.particles) && ashParticles.map((p) => (
-            <AshParticle
-              key={p.id}
-              x={p.x}
-              y={p.y}
-              size={p.size}
-              speed={p.speed}
-              wobble={p.wobble}
-              time={ashTime}
-              canvasH={canvasH}
-              image={skin.particles === 'hearts' ? heartImage : undefined}
-            />
-          ))}
+
 
         {/* ── LAYER 1: Vivid image — revealed only through the permanent revealMask OR FULLY for Cartoon ── */}
         {backgroundImage && (
-          <Group clip={skin.blockStyle.marshmallow ? undefined : settledMaskPath}>
+          <Group clip={skin.blockStyle.marshmallow ? boardClipPath : settledMaskPath}>
             <Image
               image={backgroundImage}
               x={imgX}
@@ -379,6 +345,40 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
               height={imgHeight}
               fit={skin.blockStyle.marshmallow ? "contain" : "cover"}
             />
+          </Group>
+        )}
+
+        {/* ── LAYER 1.1: Water Droplets (Magnifying Glass Effect) ── */}
+        {backgroundImage && skin.waterDroplets && (
+          <Group>
+            {/* Draw droplet drop shadows */}
+            <Path path={dropletClipPath} color="rgba(0,0,0,0.1)">
+              <Shadow dx={0} dy={4} blur={4} color="rgba(0,0,0,0.5)" />
+            </Path>
+            
+            {/* Magnified Image + Specular Highlights */}
+            <Group clip={dropletClipPath}>
+              <Group transform={[{ scale: 1.15 }]} origin={vec(canvasW / 2, canvasH / 2)}>
+                <Image
+                  image={backgroundImage}
+                  x={imgX}
+                  y={imgY}
+                  width={imgWidth}
+                  height={imgHeight}
+                  fit={skin.blockStyle.marshmallow ? "contain" : "cover"}
+                />
+              </Group>
+              {waterDroplets.map(drop => (
+                <Group key={`hi-${drop.id}`}>
+                  {/* Bottom-right inner darkness */}
+                  <Circle cx={drop.x + drop.r * 0.3} cy={drop.y + drop.r * 0.3} r={drop.r * 0.6} color="rgba(0,0,0,0.2)">
+                    <BlurMask blur={drop.r * 0.5} style="normal" />
+                  </Circle>
+                  {/* Top-left specular highlight */}
+                  <Circle cx={drop.x - drop.r * 0.3} cy={drop.y - drop.r * 0.3} r={drop.r * 0.25} color="rgba(255,255,255,0.9)" />
+                </Group>
+              ))}
+            </Group>
           </Group>
         )}
 
@@ -417,6 +417,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         {settledBlocks.map(({ x, y, color }) => {
           const bx = x * BLOCK_SIZE;
           const by = y * BLOCK_SIZE;
+          const blockColor = skin.blockStyle.uniformColor || color || '#fff';
           return (
             <Group key={`glass-${x}-${y}`}>
               {skin.blockStyle.marshmallow ? (
@@ -425,8 +426,20 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                     x={bx + 1} y={by + 1}
                     width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
                     r={8}
-                    color={color || '#fff'}
+                    color={blockColor}
                   />
+                  {skin.blockStyle.fluffy && (
+                    <RoundedRect
+                      x={bx + 1} y={by + 1}
+                      width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                      r={8}
+                      blendMode="softLight"
+                    >
+                      <Paint>
+                        <FractalNoise freqX={0.08} freqY={0.08} octaves={2} />
+                      </Paint>
+                    </RoundedRect>
+                  )}
                   <RoundedRect
                     x={bx + 3} y={by + 3}
                     width={BLOCK_SIZE - 6} height={(BLOCK_SIZE - 6) * 0.4}
@@ -523,6 +536,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
         {activeCells.map(({ x, y }) => {
           const bx = x * BLOCK_SIZE;
           const by = y * BLOCK_SIZE;
+          const blockColor = skin.blockStyle.uniformColor || (currentPiece ? currentPiece.color : '#fff');
           return (
             <Group key={`active-${x}-${y}`}>
               {skin.blockStyle.marshmallow && currentPiece ? (
@@ -531,8 +545,20 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                     x={bx + 1} y={by + 1}
                     width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
                     r={8}
-                    color={currentPiece.color}
+                    color={blockColor}
                   />
+                  {skin.blockStyle.fluffy && (
+                    <RoundedRect
+                      x={bx + 1} y={by + 1}
+                      width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                      r={8}
+                      blendMode="softLight"
+                    >
+                      <Paint>
+                        <FractalNoise freqX={0.08} freqY={0.08} octaves={2} />
+                      </Paint>
+                    </RoundedRect>
+                  )}
                   <RoundedRect
                     x={bx + 3} y={by + 3}
                     width={BLOCK_SIZE - 6} height={(BLOCK_SIZE - 6) * 0.4}
@@ -573,7 +599,19 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           );
         })}
 
+        {/* ── LAYER 6: Neumorphic Inset Frame (Rendered OVER everything, outside the board clip) ── */}
         </Group>
+
+        {skin.id === 'bubblegum_bunny' && (
+          <Group>
+            <Path path={insetFramePath} color={skin.colors?.background?.[0] || '#FFE4E1'}>
+              {/* Dark top-left inner shadow - sharp for paper cut-out */}
+              <Shadow dx={6} dy={6} blur={2} color="rgba(0,0,0,0.15)" />
+              {/* Bright bottom-right inner shadow - sharp for paper cut-out */}
+              <Shadow dx={-4} dy={-4} blur={2} color="rgba(255,255,255,1)" />
+            </Path>
+          </Group>
+        )}
       </Canvas>
     );
   }

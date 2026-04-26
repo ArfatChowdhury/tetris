@@ -14,6 +14,8 @@ export interface BlockStyle {
   magnifierScale?: number;
   breathing?: boolean;
   marshmallow?: boolean;
+  fluffy?: boolean;
+  uniformColor?: string;
 }
 
 export interface SkinColors {
@@ -29,8 +31,10 @@ export interface SkinDefinition {
   price: number;
   preview: string;
   image?: any; // require() image source for Mosaic
-  uiStyle: 'glass' | 'cartoon';
-  particles?: 'ash' | 'hearts';
+  uiStyle: 'glass' | 'cartoon' | 'neumorphic' | 'kawaii';
+  particles?: 'ash' | 'hearts' | 'bubbles';
+  imageScale?: number;
+  waterDroplets?: boolean;
   blockStyle: BlockStyle;
   particleColor: string;
   lineClearEffect: LineClearEffect;
@@ -86,10 +90,13 @@ export const SKINS: SkinDefinition[] = [
     price: 0,
     preview: '🐰',
     image: require('../assets/images/bunny/rabbit.png'),
-    uiStyle: 'cartoon',
+    uiStyle: 'neumorphic',
     particles: 'hearts',
+    imageScale: 0.8,
     blockStyle: {
       marshmallow: true,
+      fluffy: true,
+      uniformColor: '#FFB6C1',
       borderColor: 'rgba(255, 182, 193, 0.4)', // Soft pink border
     },
     particleColor: '#FF69B4',
@@ -99,6 +106,29 @@ export const SKINS: SkinDefinition[] = [
       secondary: '#FF8C00', // Carrot orange
       accent: '#FFFFFF',
       background: ['#FFF0F5', '#FFC0CB', '#FFF0F5'], // Soft pink gradient
+    },
+  },
+  {
+    id: 'bubblegum_bunny',
+    name: 'Bubblegum Bunny',
+    price: 1500,
+    preview: '🫧',
+    image: require('../assets/images/bunny/rabbit2.png'),
+    uiStyle: 'neumorphic',
+    particles: 'bubbles',
+    blockStyle: {
+      marshmallow: true,
+      fluffy: true,
+      uniformColor: '#FFB6C1',
+      borderColor: 'rgba(255, 105, 180, 0.4)',
+    },
+    particleColor: '#FF69B4',
+    lineClearEffect: 'dissolve',
+    colors: {
+      primary: '#FF69B4',
+      secondary: '#00FFFF',
+      accent: '#FFFFFF',
+      background: ['#E0F7FA', '#FCE4EC', '#F8BBD0'],
     },
   },
 ];
