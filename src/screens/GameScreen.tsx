@@ -121,7 +121,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
   const primaryColor   = activeSkin.colors?.primary   || '#fff';
   const secondaryColor = activeSkin.colors?.secondary || '#aaa';
   const accentColor    = activeSkin.colors?.accent    || '#fff';
-  const statColor  = isSoft ? primaryColor : accentColor;
+  const statColor  = (isSoft && isKawaii) ? secondaryColor : (isSoft ? primaryColor : accentColor);
   const labelColor = isSoft ? secondaryColor : 'rgba(255,255,255,0.45)';
   const dividerColor = isSoft ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
 
@@ -139,72 +139,70 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
 
       {activeSkinId === 'goku_mosaic' && <ThunderOverlay flashOpacity={flashOpacity} />}
 
-      {/* ── GESTURE AREA WRAPPING FULL SCREEN ── */}
+      {/* ── HEADER HUD (OUTSIDE GESTURE DETECTOR SO BUTTONS WORK) ── */}
+      <View style={[
+        styles.hud,
+        !isSoft && activeSkinId !== 'samurai_embers' && { backgroundColor: 'rgba(0,0,0,0.55)' },
+        activeSkinId === 'samurai_embers' && { backgroundColor: 'rgba(255,69,0,0.1)' },
+        isSoft && isKawaii && styles.hudKawaii,
+      ]}>
+        {/* HOLD */}
+        <View style={styles.hudPiece}>
+          <Text style={[styles.hudLabel, { color: labelColor }]}>HOLD</Text>
+          <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
+        </View>
+
+        {/* CENTER STATS */}
+        <View style={styles.hudStats}>
+          <View style={styles.hudStatRow}>
+            <View style={styles.hudStatCell}>
+              <Text style={[styles.hudStatLabel, { color: labelColor }]}>SCORE</Text>
+              <Text
+                style={[styles.hudStatValue, { color: statColor }]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {score.toLocaleString()}
+              </Text>
+            </View>
+            <View style={[styles.hudDivider, { backgroundColor: dividerColor }]} />
+            <View style={styles.hudStatCell}>
+              <Text style={[styles.hudStatLabel, { color: labelColor }]}>LVL</Text>
+              <Text style={[styles.hudStatValue, { color: statColor }]}>{level}</Text>
+            </View>
+            <View style={[styles.hudDivider, { backgroundColor: dividerColor }]} />
+            <View style={styles.hudStatCell}>
+              <Text style={[styles.hudStatLabel, { color: labelColor }]}>LINES</Text>
+              <Text style={[styles.hudStatValue, { color: statColor }]}>{lines}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* NEXT */}
+        <View style={styles.hudPiece}>
+          <Text style={[styles.hudLabel, { color: labelColor }]}>NEXT</Text>
+          <NextPiecePreview type={nextPieceType as TetrominoType} skin={activeSkin} />
+        </View>
+
+        {/* PAUSE */}
+        <TouchableOpacity
+          style={[
+            styles.pauseBtn,
+            isSoft && styles.pauseBtnSoft,
+            isKawaii && styles.pauseBtnKawaii,
+          ]}
+          onPress={onPause}
+        >
+          <Text style={[styles.pauseBtnText, isSoft && { color: primaryColor }]}>
+            {gameState === 'paused' ? '▶' : '⏸'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* ── GESTURE AREA WRAPPING REMAINING SCREEN ── */}
       <GestureDetector gesture={Gesture.Race(panGesture, tap, longPress)}>
         <View style={styles.gestureAreaFullScreen}>
           
-          {/* ── HEADER HUD ─────────────────────────────────────
-               [ HOLD ]  SCORE | LVL | LINES  [ NEXT ]  [⏸]
-          ──────────────────────────────────────────────────── */}
-          <View style={[
-            styles.hud,
-            !isSoft && activeSkinId !== 'samurai_embers' && { backgroundColor: 'rgba(0,0,0,0.55)' },
-            activeSkinId === 'samurai_embers' && { backgroundColor: 'rgba(255,69,0,0.1)' },
-            isSoft && isKawaii && styles.hudKawaii,
-          ]}>
-            {/* HOLD */}
-            <View style={styles.hudPiece}>
-              <Text style={[styles.hudLabel, { color: labelColor }]}>HOLD</Text>
-              <HoldPieceBox type={holdPieceType as TetrominoType} skin={activeSkin} />
-            </View>
-
-            {/* CENTER STATS */}
-            <View style={styles.hudStats}>
-              <View style={styles.hudStatRow}>
-                <View style={styles.hudStatCell}>
-                  <Text style={[styles.hudStatLabel, { color: labelColor }]}>SCORE</Text>
-                  <Text
-                    style={[styles.hudStatValue, { color: statColor }]}
-                    numberOfLines={1}
-                    adjustsFontSizeToFit
-                  >
-                    {score.toLocaleString()}
-                  </Text>
-                </View>
-                <View style={[styles.hudDivider, { backgroundColor: dividerColor }]} />
-                <View style={styles.hudStatCell}>
-                  <Text style={[styles.hudStatLabel, { color: labelColor }]}>LVL</Text>
-                  <Text style={[styles.hudStatValue, { color: statColor }]}>{level}</Text>
-                </View>
-                <View style={[styles.hudDivider, { backgroundColor: dividerColor }]} />
-                <View style={styles.hudStatCell}>
-                  <Text style={[styles.hudStatLabel, { color: labelColor }]}>LINES</Text>
-                  <Text style={[styles.hudStatValue, { color: statColor }]}>{lines}</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* NEXT */}
-            <View style={styles.hudPiece}>
-              <Text style={[styles.hudLabel, { color: labelColor }]}>NEXT</Text>
-              <NextPiecePreview type={nextPieceType as TetrominoType} skin={activeSkin} />
-            </View>
-
-            {/* PAUSE — only visible control during play. Back is in the pause modal. */}
-            <TouchableOpacity
-              style={[
-                styles.pauseBtn,
-                isSoft && styles.pauseBtnSoft,
-                isKawaii && styles.pauseBtnKawaii,
-              ]}
-              onPress={onPause}
-            >
-              <Text style={[styles.pauseBtnText, isSoft && { color: primaryColor }]}>
-                {gameState === 'paused' ? '▶' : '⏸'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
           {/* ── BOARD ── */}
           <View style={styles.boardArea}>
             <View style={[

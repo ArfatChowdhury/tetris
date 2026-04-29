@@ -72,13 +72,17 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     
     const offsetX = (baseW - imgWidth) / 2;
     const offsetY = (baseH - imgHeight) / 2;
-    const imgX = useDerivedValue(() => parallaxX.value - PARALLAX_PADDING + offsetX);
-    const imgY = useDerivedValue(() => parallaxY.value - PARALLAX_PADDING + offsetY);
+    
+    // Disable parallax for Kawaii theme since blocks are solid and background sliding is distracting
+    const enableParallax = skin.uiStyle !== 'kawaii';
+    
+    const imgX = useDerivedValue(() => (enableParallax ? parallaxX.value : 0) - PARALLAX_PADDING + offsetX);
+    const imgY = useDerivedValue(() => (enableParallax ? parallaxY.value : 0) - PARALLAX_PADDING + offsetY);
     
     // The magnifier needs an additional offset to stay centered while zoomed
     const magScale = skin.blockStyle.magnifierScale || 2.0;
-    const magX = useDerivedValue(() => parallaxX.value - PARALLAX_PADDING - canvasW * ((magScale - 1) / 2));
-    const magY = useDerivedValue(() => parallaxY.value - PARALLAX_PADDING - canvasH * ((magScale - 1) / 2));
+    const magX = useDerivedValue(() => (enableParallax ? parallaxX.value : 0) - PARALLAX_PADDING - canvasW * ((magScale - 1) / 2));
+    const magY = useDerivedValue(() => (enableParallax ? parallaxY.value : 0) - PARALLAX_PADDING - canvasH * ((magScale - 1) / 2));
 
     // Explicit clip path (Rounded Rectangle) to prevent Android rendering bleed
     const boardClipPath = useMemo(() => {
