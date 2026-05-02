@@ -9,6 +9,7 @@ import {
   Path,
   BlurMask,
   useImage,
+  Rect,
 } from '@shopify/react-native-skia';
 import {
   useSharedValue,
@@ -31,7 +32,7 @@ interface AshParticleProps {
   time: SharedValue<number>;
   canvasH: number;
   canvasW: number;
-  particleType?: 'ash' | 'hearts' | 'bubbles';
+  particleType?: 'ash' | 'hearts' | 'bubbles' | 'sparks';
   image?: any; // For hearts
   simulateBunnyCollision?: boolean;
 }
@@ -87,6 +88,20 @@ const AshParticle: React.FC<AshParticleProps> = ({ x, y, size, speed, wobble, ti
     );
   }
 
+  if (particleType === 'sparks') {
+    const sparkTransform = useDerivedValue(() => [
+      { translateX: cx.value },
+      { translateY: cy.value }
+    ]);
+    return (
+      <Group transform={sparkTransform}>
+        <Rect x={-1} y={-size * 4} width={2} height={size * 8} color="rgba(0, 255, 255, 0.6)">
+          <BlurMask blur={2} style="normal" />
+        </Rect>
+      </Group>
+    );
+  }
+
   return (
     <Circle cx={cx} cy={cy} r={size} color="#FF6600">
       <BlurMask blur={3} style="normal" />
@@ -114,16 +129,16 @@ export const AmbientParticleSystem: React.FC<AmbientParticleSystemProps> = ({ sk
   }, [skin.particles, time]);
 
   const particles = useMemo(() => {
-    const isSpecial = skin.particles === 'hearts' || skin.particles === 'bubbles';
+    const isSpecial = skin.particles === 'hearts' || skin.particles === 'bubbles' || skin.particles === 'sparks';
     // More particles since it's full screen
-    const count = isSpecial ? 25 : 40;
+    const count = skin.particles === 'sparks' ? 50 : (isSpecial ? 25 : 40);
     return Array.from({ length: count }).map((_, i) => ({
       id: i,
       x: Math.random() * windowWidth,
       y: Math.random() * windowHeight,
-      size: isSpecial ? Math.random() * 2 + 1.5 : Math.random() * 2 + 1,
-      speed: isSpecial ? Math.random() * 0.15 + 0.05 : Math.random() * 0.4 + 0.2,
-      wobble: Math.random() * Math.PI * 2,
+      size: skin.particles === 'sparks' ? Math.random() * 3 + 2 : (isSpecial ? Math.random() * 2 + 1.5 : Math.random() * 2 + 1),
+      speed: skin.particles === 'sparks' ? Math.random() * 1.5 + 1.0 : (isSpecial ? Math.random() * 0.15 + 0.05 : Math.random() * 0.4 + 0.2),
+      wobble: skin.particles === 'sparks' ? Math.random() * 2 : Math.random() * Math.PI * 2,
     }));
   }, [skin.particles]);
 

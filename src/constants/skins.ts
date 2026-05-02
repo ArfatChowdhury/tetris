@@ -17,6 +17,7 @@ export interface BlockStyle {
   marshmallow?: boolean;
   fluffy?: boolean;
   uniformColor?: string;
+  cyber?: boolean;
 }
 
 export interface SkinColors {
@@ -33,7 +34,7 @@ export interface SkinDefinition {
   preview: string;
   image?: any; // require() image source for Mosaic
   uiStyle: 'glass' | 'cartoon' | 'neumorphic' | 'kawaii';
-  particles?: 'ash' | 'hearts' | 'bubbles';
+  particles?: 'ash' | 'hearts' | 'bubbles' | 'sparks';
   imageScale?: number;
   waterDroplets?: boolean;
   blockStyle: BlockStyle;
@@ -128,6 +129,28 @@ export const SKINS: SkinDefinition[] = [
       secondary: '#00FFFF',
       accent: '#FFFFFF',
       background: ['#E0F7FA', '#FCE4EC', '#F8BBD0'],
+    },
+  },
+  {
+    id: 'cyber_void',
+    name: 'Cyber-Void 2077',
+    price: 2500,
+    preview: '💾',
+    uiStyle: 'glass',
+    particles: 'sparks',
+    blockStyle: {
+      cyber: true,
+      magnifier: true,
+      magnifierScale: 1.5,
+      glow: true,
+    },
+    particleColor: '#00ffff',
+    lineClearEffect: 'shatter',
+    colors: {
+      primary: '#00FFFF', // Neon Cyan
+      secondary: '#9400D3', // Dark Violet
+      accent: '#FF00FF', // Magenta
+      background: ['#050010', '#10002B', '#050010'],
     },
   },
 ];

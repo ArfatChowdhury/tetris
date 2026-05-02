@@ -112,19 +112,39 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
     // --- Breathing Embers Engine ---
     const emberBreath = useSharedValue(0.1);
+    const cyberBreath = useSharedValue(0.1);
+    const bgTime = useSharedValue(0);
     
     useEffect(() => {
-      if (skin.blockStyle.breathing) {
+      if (skin.id === 'cyber_void') {
+        bgTime.value = withRepeat(
+          withTiming(1, { duration: 10000, easing: Easing.linear }),
+          -1,
+          false
+        );
+      }
+    }, [skin.id, bgTime]);
+
+    useEffect(() => {
+      if (skin.blockStyle.breathing || skin.blockStyle.cyber) {
         // Slow, 3-second inhale/exhale physics loop
         emberBreath.value = withRepeat(
           withTiming(0.85, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
           -1, // Infinite loops
           true // Reverse (ping-pong)
         );
+        
+        // Fast, 0.8s cyber pulse
+        cyberBreath.value = withRepeat(
+          withTiming(1, { duration: 400, easing: Easing.inOut(Easing.ease) }),
+          -1,
+          true
+        );
       } else {
         emberBreath.value = 0;
+        cyberBreath.value = 0.2;
       }
-    }, [skin.blockStyle.breathing, emberBreath]);
+    }, [skin.blockStyle.breathing, skin.blockStyle.cyber, emberBreath, cyberBreath]);
 
 
 
@@ -257,19 +277,61 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           ) : (
             <Group>
               <Rect x={0} y={0} width={canvasW} height={canvasH} color="#050810" />
-              <Rect x={0} y={0} width={canvasW} height={canvasH}>
-                <LinearGradient
-                  start={vec(0, 0)}
-                  end={vec(canvasW, canvasH)}
-                  colors={['#0A1020', '#050810']}
-                />
-              </Rect>
             </Group>
           )}
 
-          {/* ── DIAGNOSTIC FALLBACK: If image fails to load ── */}
-          {!backgroundImage && (
-            <Rect x={0} y={0} width={canvasW} height={canvasH} color="#FF00324D" />
+          {/* ── CYBER-VOID PROCEDURAL BACKGROUND ── */}
+          {skin.id === 'cyber_void' && (
+            <Group>
+              {/* Deep Nebula Glow */}
+              <Rect x={0} y={0} width={canvasW} height={canvasH}>
+                <FractalNoise freqX={0.01} freqY={0.01} octaves={2} />
+                <ColorMatrix
+                  matrix={[
+                    0, 0, 0, 0, 0.05, // R
+                    0, 0, 0, 0, 0,    // G
+                    0, 0, 0, 0, 0.15, // B
+                    0, 0, 0, 1, 0,    // A
+                  ]}
+                />
+              </Rect>
+              {/* Scrolling Grid Lines */}
+              {Array.from({ length: 15 }).map((_, i) => (
+                <Rect
+                  key={`h-grid-${i}`}
+                  x={0}
+                  y={(i * (canvasH / 15))}
+                  width={canvasW}
+                  height={1}
+                  color="rgba(0, 255, 255, 0.05)"
+                />
+              ))}
+              {Array.from({ length: 10 }).map((_, i) => (
+                <Rect
+                  key={`v-grid-${i}`}
+                  x={(i * (canvasW / 10))}
+                  y={0}
+                  width={1}
+                  height={canvasH}
+                  color="rgba(0, 255, 255, 0.05)"
+                />
+              ))}
+              {/* Digital Rain / Data Drops */}
+              {Array.from({ length: 8 }).map((_, i) => (
+                <DigitalRainDrop 
+                  key={`rain-${i}`} 
+                  i={i} 
+                  canvasH={canvasH} 
+                  canvasW={canvasW} 
+                  bgTime={bgTime} 
+                />
+              ))}
+            </Group>
+          )}
+
+          {/* ── DIAGNOSTIC FALLBACK ── */}
+          {!backgroundImage && skin.id !== 'cyber_void' && (
+            <Rect x={0} y={0} width={canvasW} height={canvasH} color="#FF003222" />
           )}
 
 
@@ -422,6 +484,39 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                     </Paint>
                   </RoundedRect>
                 </Group>
+              ) : skin.blockStyle.cyber ? (
+                /* ── CYBER-VOID DATA BLOCK ── */
+                <Group>
+                  {/* Body: Deep Translucent Violet */}
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={2} color="rgba(15, 0, 43, 0.85)" />
+                  
+                  {/* Neon Glow Border - Pulses with cyberBreath */}
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={2} color="transparent">
+                    <Paint style="stroke" strokeWidth={1.5} color="#00FFFF">
+                      <BlurMask blur={cyberBreath} style="outer" />
+                    </Paint>
+                  </RoundedRect>
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={2} color="transparent">
+                    <Paint style="stroke" strokeWidth={1} color="#00FFFFCC" />
+                  </RoundedRect>
+
+                  {/* Internal "Circuitry" Pattern */}
+                  <Group opacity={cyberBreath.value * 0.5 + 0.2}>
+                    <Rect x={bx + 4} y={by + 6} width={BLOCK_SIZE - 8} height={1} color="#00FFFF66" />
+                    <Rect x={bx + 6} y={by + 4} width={1} height={BLOCK_SIZE - 8} color="#FF00FF66" />
+                    <Rect x={bx + 4} y={by + BLOCK_SIZE - 6} width={BLOCK_SIZE - 10} height={1} color="#00FFFF44" />
+                    
+                    {/* Data "Node" */}
+                    <Circle cx={bx + BLOCK_SIZE - 6} cy={by + BLOCK_SIZE - 6} r={1.5} color="#00FFFF" />
+                  </Group>
+
+                  {/* Corner Brackets */}
+                  <Path path={`M ${bx+4} ${by+8} L ${bx+4} ${by+4} L ${bx+8} ${by+4}`} color="#00FFFF" strokeWidth={1} style="stroke" />
+                  <Path path={`M ${bx+BLOCK_SIZE-8} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-4} ${by+BLOCK_SIZE-4} L ${bx+BLOCK_SIZE-4} ${by+BLOCK_SIZE-8}`} color="#00FFFF" strokeWidth={1} style="stroke" />
+                  
+                  {/* Top Specular */}
+                  <Rect x={bx + 2} y={by + 2} width={BLOCK_SIZE - 4} height={1} color="rgba(255,255,255,0.2)" />
+                </Group>
               ) : skin.blockStyle.marshmallow ? (
                 <Group>
                   <RoundedRect
@@ -512,24 +607,37 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           const by = y * BLOCK_SIZE;
           return (
             <Group key={`ghost-${x}-${y}`}>
-              {/* Glowing Holographic Core */}
-              <RoundedRect
-                x={bx + 1} y={by + 1}
-                width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
-                r={CORNER_RADIUS}
-                color={skin.colors?.primary ? `${skin.colors.primary}4D` : '#78D2FF4D'}
-              >
-                <BlurMask blur={4} style="normal" />
-              </RoundedRect>
-              {/* Sharp Holographic Border */}
-              <RoundedRect
-                x={bx + 1} y={by + 1}
-                width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
-                r={CORNER_RADIUS}
-                color="transparent"
-              >
-                <Paint style="stroke" strokeWidth={2} color={skin.colors?.primary ? `${skin.colors.primary}CC` : '#78D2FFCC'} />
-              </RoundedRect>
+              {skin.id === 'cyber_void' ? (
+                /* ── DIGITAL BLUEPRINT GHOST ── */
+                <Group>
+                  <RoundedRect x={bx + 2} y={by + 2} width={BLOCK_SIZE - 4} height={BLOCK_SIZE - 4} r={0} color="transparent">
+                    <Paint style="stroke" strokeWidth={1} color="#00FFFF44" strokeJoin="miter" />
+                  </RoundedRect>
+                  <Path path={`M ${bx+1} ${by+1} L ${bx+5} ${by+1} M ${bx+1} ${by+1} L ${bx+1} ${by+5}`} color="#00FFFF88" strokeWidth={1} style="stroke" />
+                </Group>
+              ) : (
+                /* ── STANDARD GHOST ── */
+                <Group>
+                  {/* Glowing Holographic Core */}
+                  <RoundedRect
+                    x={bx + 1} y={by + 1}
+                    width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                    r={CORNER_RADIUS}
+                    color={skin.colors?.primary ? `${skin.colors.primary}4D` : '#78D2FF4D'}
+                  >
+                    <BlurMask blur={4} style="normal" />
+                  </RoundedRect>
+                  {/* Sharp Holographic Border */}
+                  <RoundedRect
+                    x={bx + 1} y={by + 1}
+                    width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                    r={CORNER_RADIUS}
+                    color="transparent"
+                  >
+                    <Paint style="stroke" strokeWidth={2} color={skin.colors?.primary ? `${skin.colors.primary}CC` : '#78D2FFCC'} />
+                  </RoundedRect>
+                </Group>
+              )}
             </Group>
           );
         })}
@@ -567,6 +675,22 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                     r={4}
                     color="rgba(255,255,255,0.4)"
                   />
+                </Group>
+              ) : skin.blockStyle.cyber && currentPiece ? (
+                /* ── ACTIVE CYBER BLOCK ── */
+                <Group>
+                   {/* Intense Outer Neon Glow */}
+                   <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={2} color="#00FFFF">
+                    <BlurMask blur={8} style="outer" />
+                  </RoundedRect>
+                  
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={2} color="rgba(0, 255, 255, 0.2)" />
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={2} color="transparent">
+                    <Paint style="stroke" strokeWidth={2} color="#00FFFF" />
+                  </RoundedRect>
+
+                  {/* Glitch lines */}
+                  <Rect x={bx + 2} y={by + BLOCK_SIZE/2} width={BLOCK_SIZE - 4} height={1} color="#FF00FF" opacity={cyberBreath} />
                 </Group>
               ) : (
                 <Group>

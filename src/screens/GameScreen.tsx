@@ -118,12 +118,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
   const isNeumorphic = activeSkin.uiStyle === 'neumorphic';
   const isKawaii    = activeSkin.uiStyle === 'kawaii';
   const isSoft      = isNeumorphic || isKawaii;
-  const primaryColor   = activeSkin.colors?.primary   || '#fff';
-  const secondaryColor = activeSkin.colors?.secondary || '#aaa';
-  const accentColor    = activeSkin.colors?.accent    || '#fff';
-  const statColor  = (isSoft && isKawaii) ? secondaryColor : (isSoft ? primaryColor : accentColor);
-  const labelColor = isSoft ? secondaryColor : 'rgba(255,255,255,0.45)';
-  const dividerColor = isSoft ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)';
+  const isCyber = activeSkinId === 'cyber_void';
+  const statColor  = isCyber ? '#00FFFF' : ((isSoft && isKawaii) ? secondaryColor : (isSoft ? primaryColor : accentColor));
+  const labelColor = isCyber ? '#FF00FF' : (isSoft ? secondaryColor : 'rgba(255,255,255,0.45)');
+  const dividerColor = isCyber ? 'rgba(0, 255, 255, 0.3)' : (isSoft ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)');
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -142,8 +140,9 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
       {/* ── HEADER HUD (OUTSIDE GESTURE DETECTOR SO BUTTONS WORK) ── */}
       <View style={[
         styles.hud,
-        !isSoft && activeSkinId !== 'samurai_embers' && { backgroundColor: 'rgba(0,0,0,0.55)' },
+        !isSoft && activeSkinId !== 'samurai_embers' && !isCyber && { backgroundColor: 'rgba(0,0,0,0.55)' },
         activeSkinId === 'samurai_embers' && { backgroundColor: 'rgba(255,69,0,0.1)' },
+        isCyber && { backgroundColor: 'rgba(5, 0, 20, 0.8)', borderBottomWidth: 1, borderBottomColor: '#00FFFF' },
         isSoft && isKawaii && styles.hudKawaii,
       ]}>
         {/* HOLD */}
@@ -158,7 +157,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
             <View style={styles.hudStatCell}>
               <Text style={[styles.hudStatLabel, { color: labelColor }]}>SCORE</Text>
               <Text
-                style={[styles.hudStatValue, { color: statColor }]}
+                style={[styles.hudStatValue, { color: statColor }, isCyber && { textShadowColor: '#00FFFF', textShadowRadius: 8 }]}
                 numberOfLines={1}
                 adjustsFontSizeToFit
               >
@@ -168,12 +167,12 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
             <View style={[styles.hudDivider, { backgroundColor: dividerColor }]} />
             <View style={styles.hudStatCell}>
               <Text style={[styles.hudStatLabel, { color: labelColor }]}>LVL</Text>
-              <Text style={[styles.hudStatValue, { color: statColor }]}>{level}</Text>
+              <Text style={[styles.hudStatValue, { color: statColor }, isCyber && { textShadowColor: '#00FFFF', textShadowRadius: 8 }]}>{level}</Text>
             </View>
             <View style={[styles.hudDivider, { backgroundColor: dividerColor }]} />
             <View style={styles.hudStatCell}>
               <Text style={[styles.hudStatLabel, { color: labelColor }]}>LINES</Text>
-              <Text style={[styles.hudStatValue, { color: statColor }]}>{lines}</Text>
+              <Text style={[styles.hudStatValue, { color: statColor }, isCyber && { textShadowColor: '#00FFFF', textShadowRadius: 8 }]}>{lines}</Text>
             </View>
           </View>
         </View>
@@ -190,10 +189,11 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
             styles.pauseBtn,
             isSoft && styles.pauseBtnSoft,
             isKawaii && styles.pauseBtnKawaii,
+            isCyber && { borderColor: '#00FFFF', backgroundColor: 'rgba(0, 255, 255, 0.1)' },
           ]}
           onPress={onPause}
         >
-          <Text style={[styles.pauseBtnText, isSoft && { color: primaryColor }]}>
+          <Text style={[styles.pauseBtnText, isSoft && { color: primaryColor }, isCyber && { color: '#00FFFF' }]}>
             {gameState === 'paused' ? '▶' : '⏸'}
           </Text>
         </TouchableOpacity>
