@@ -3,6 +3,7 @@ import { View, StyleSheet, Text, Dimensions } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { GestureHandlerRootView, GestureDetector, Gesture, TouchableOpacity } from 'react-native-gesture-handler';
 import { runOnJS, useSharedValue, withSequence, withTiming, Easing } from 'react-native-reanimated';
+import Svg, { Defs, Pattern, Rect as SvgRect, Circle as SvgCircle, Path as SvgPath } from 'react-native-svg';
 import { MosaicCanvas } from '../components/MosaicCanvas';
 import { HoldPieceBox } from '../components/HoldPieceBox';
 import { NextPiecePreview } from '../components/NextPiecePreview';

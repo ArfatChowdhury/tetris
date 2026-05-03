@@ -33,7 +33,7 @@ export interface SkinDefinition {
   price: number;
   preview: string;
   image?: any; // require() image source for Mosaic
-  uiStyle: 'glass' | 'cartoon' | 'neumorphic' | 'kawaii' | 'dream';
+  uiStyle: 'glass' | 'cartoon' | 'neumorphic' | 'kawaii' | 'dream' | 'anime';
   particles?: 'ash' | 'hearts' | 'bubbles' | 'sparks';
   imageScale?: number;
   waterDroplets?: boolean;
@@ -91,7 +91,7 @@ export const SKINS: SkinDefinition[] = [
     price: 0,
     preview: '🐰',
     image: require('../assets/images/bunny/rabbit.png'),
-    uiStyle: 'kawaii',
+    uiStyle: 'dream',
     particles: 'hearts',
     imageScale: 0.8,
     blockStyle: {
@@ -115,7 +115,7 @@ export const SKINS: SkinDefinition[] = [
     price: 1500,
     preview: '🫧',
     image: require('../assets/images/bunny/rabbit2.png'),
-    uiStyle: 'neumorphic',
+    uiStyle: 'dream',
     particles: 'bubbles',
     blockStyle: {
       marshmallow: true,
@@ -154,56 +154,7 @@ export const SKINS: SkinDefinition[] = [
       background: ['#050010', '#10002B', '#050010'],
     },
   },
-  {
-    id: 'anime_dreamscape',
-    name: 'Eternal Dream',
-    price: 3500,
-    preview: '🌸',
-    image: require('../assets/anime-girl/ezgif-frame-001.jpg'),
-    frames: [
-      require('../assets/anime-girl/ezgif-frame-001.jpg'),
-      require('../assets/anime-girl/ezgif-frame-002.jpg'),
-      require('../assets/anime-girl/ezgif-frame-003.jpg'),
-      require('../assets/anime-girl/ezgif-frame-004.jpg'),
-      require('../assets/anime-girl/ezgif-frame-005.jpg'),
-      require('../assets/anime-girl/ezgif-frame-006.jpg'),
-      require('../assets/anime-girl/ezgif-frame-007.jpg'),
-      require('../assets/anime-girl/ezgif-frame-008.jpg'),
-      require('../assets/anime-girl/ezgif-frame-009.jpg'),
-      require('../assets/anime-girl/ezgif-frame-010.jpg'),
-      require('../assets/anime-girl/ezgif-frame-011.jpg'),
-      require('../assets/anime-girl/ezgif-frame-012.jpg'),
-      require('../assets/anime-girl/ezgif-frame-013.jpg'),
-      require('../assets/anime-girl/ezgif-frame-014.jpg'),
-      require('../assets/anime-girl/ezgif-frame-015.jpg'),
-      require('../assets/anime-girl/ezgif-frame-016.jpg'),
-      require('../assets/anime-girl/ezgif-frame-017.jpg'),
-      require('../assets/anime-girl/ezgif-frame-018.jpg'),
-      require('../assets/anime-girl/ezgif-frame-019.jpg'),
-      require('../assets/anime-girl/ezgif-frame-020.jpg'),
-      require('../assets/anime-girl/ezgif-frame-021.jpg'),
-      require('../assets/anime-girl/ezgif-frame-022.jpg'),
-      require('../assets/anime-girl/ezgif-frame-023.jpg'),
-      require('../assets/anime-girl/ezgif-frame-024.jpg'),
-      require('../assets/anime-girl/ezgif-frame-025.jpg'),
-    ],
-    uiStyle: 'dream', 
-    particles: 'sparks',
-    blockStyle: {
-      glass: true,
-      glow: true,
-      opacity: 0.7,
-      borderColor: '#ff69b4',
-    },
-    particleColor: '#ff69b4',
-    lineClearEffect: 'shatter',
-    colors: {
-      primary: '#ffb6c1',
-      secondary: '#dda0dd',
-      accent: '#ffffff',
-      background: ['#1a0b1a', '#2a0b2a', '#1a0b1a'], // Darker background to let the dream image pop
-    },
-  },
+
   {
     id: 'pixel_retro',
     name: '8-Bit Arcade',

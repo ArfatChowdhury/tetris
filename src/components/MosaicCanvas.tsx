@@ -84,6 +84,54 @@ const BLACK_AND_WHITE = [
 ];
 
 
+const PreloadedFrame = React.memo(({ source, isActive, x, y, width, height, fit }: any) => {
+  const image = useImage(source);
+  if (!image || !isActive) return null;
+  
+  return (
+    <Group>
+      {fit === 'contain' && (
+        <Group>
+          <Image image={image} x={x} y={y} width={width} height={height} fit="cover" opacity={0.3} />
+          <Rect x={x} y={y} width={width} height={height} color="rgba(20, 5, 25, 0.4)" />
+        </Group>
+      )}
+      <Image image={image} x={x} y={y} width={width} height={height} fit={fit} />
+    </Group>
+  );
+});
+
+const AnimatedSkiaImage: React.FC<{ frames: any[]; x: any; y: any; width: number; height: number; fit: any }> = React.memo(({ frames, x, y, width, height, fit }) => {
+  const [frameIndex, setFrameIndex] = React.useState(0);
+  
+  React.useEffect(() => {
+    if (frames && frames.length > 0) {
+      const interval = setInterval(() => {
+        setFrameIndex((prev) => (prev + 1) % frames.length);
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [frames]);
+
+  if (!frames || frames.length === 0) return null;
+
+  return (
+    <Group>
+      {frames.map((frame, index) => (
+        <PreloadedFrame
+          key={index}
+          source={frame}
+          isActive={index === frameIndex}
+          x={x}
+          y={y}
+          width={width}
+          height={height}
+          fit={fit}
+        />
+      ))}
+    </Group>
+  );
+});
 
 export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
   ({ board, currentPiece, ghostY, revealMask, skin, flashOpacity, playerName = 'Arfat' }) => {
@@ -97,17 +145,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     const canvasW = COLS * BLOCK_SIZE;
     const canvasH = ROWS * BLOCK_SIZE;
 
-    const [frameIndex, setFrameIndex] = React.useState(0);
-    React.useEffect(() => {
-      if (skin.frames && skin.frames.length > 0) {
-        const interval = setInterval(() => {
-          setFrameIndex((prev) => (prev + 1) % skin.frames!.length);
-        }, 80); // ~12fps for anime
-        return () => clearInterval(interval);
-      }
-    }, [skin.frames]);
-
-    const backgroundImage = useImage(skin.frames ? skin.frames[frameIndex] : skin.image);
+    const backgroundImage = useImage(skin.image);
     const carrotImage = useImage(require('../assets/images/bunny/carrot.png'));
     const heartImage = useImage(require('../assets/images/bunny/heart.png'));
     const { parallaxX, parallaxY } = useParallax();
@@ -426,7 +464,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
 
           {/* ── LAYER 0: Faint, Bleak Black & White Background (Skipped for Cartoon) ── */}
-          {backgroundImage && !skin.blockStyle.marshmallow && (
+          {backgroundImage && !skin.blockStyle.marshmallow && skin.uiStyle !== 'anime' && (
             <Group opacity={0.15}>
               <ColorMatrix matrix={BLACK_AND_WHITE} />
               <Image
@@ -470,17 +508,28 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
 
 
-        {/* ── LAYER 1: Vivid image — revealed only through the permanent revealMask OR FULLY for Cartoon/Dream ── */}
-        {backgroundImage && (
+        {/* ── LAYER 1: Vivid image — revealed only through the permanent revealMask OR FULLY for Cartoon/Dream/Anime ── */}
+        {(backgroundImage || (skin.frames && skin.frames.length > 0)) && (
           <Group clip={(skin.blockStyle.marshmallow || skin.uiStyle === 'dream') ? boardClipPath : settledMaskPath}>
-            <Image
-              image={backgroundImage}
-              x={imgX}
-              y={imgY}
-              width={imgWidth}
-              height={imgHeight}
-              fit={(skin.blockStyle.marshmallow && skin.uiStyle !== 'dream') ? "contain" : "cover"}
-            />
+            {skin.frames && skin.frames.length > 0 ? (
+              <AnimatedSkiaImage
+                frames={skin.frames}
+                x={imgX}
+                y={imgY}
+                width={imgWidth}
+                height={imgHeight}
+                fit={skin.uiStyle === 'anime' ? "contain" : "cover"}
+              />
+            ) : backgroundImage ? (
+              <Image
+                image={backgroundImage}
+                x={imgX}
+                y={imgY}
+                width={imgWidth}
+                height={imgHeight}
+                fit={(skin.blockStyle.marshmallow && skin.uiStyle !== 'dream') ? "contain" : "cover"}
+              />
+            ) : null}
           </Group>
         )}
 
@@ -664,6 +713,50 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                   {/* Iridescent Shine */}
                   <RoundedRect x={bx + 3} y={by + 3} width={BLOCK_SIZE - 6} height={4} r={2} color="rgba(255,255,255,0.8)" />
                 </Group>
+              ) : skin.uiStyle === 'anime' ? (
+                /* ── ANIME GLASS GLOW BLOCK ── */
+                <Group>
+                  {/* Deep glowing background (matches the neon anime vibe) */}
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={6}>
+                    <LinearGradient
+                      start={vec(bx, by)}
+                      end={vec(bx + BLOCK_SIZE, by + BLOCK_SIZE)}
+                      colors={['rgba(255,105,180,0.5)', 'rgba(148,0,211,0.3)']}
+                    />
+                  </RoundedRect>
+                  
+                  {/* Intense Neon Border */}
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={6} color="transparent">
+                    <Paint style="stroke" strokeWidth={1} color="rgba(255, 255, 255, 0.8)">
+                      <BlurMask blur={2} style="outer" />
+                    </Paint>
+                  </RoundedRect>
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={6} color="transparent">
+                    <Paint style="stroke" strokeWidth={0.5} color="#FF69B4" />
+                  </RoundedRect>
+
+                  {/* Star/Sparkle accent in the corner */}
+                  <Path 
+                    path={`M ${bx+BLOCK_SIZE-8} ${by+6} Q ${bx+BLOCK_SIZE-6} ${by+6} ${bx+BLOCK_SIZE-6} ${by+4} Q ${bx+BLOCK_SIZE-6} ${by+6} ${bx+BLOCK_SIZE-4} ${by+6} Q ${bx+BLOCK_SIZE-6} ${by+6} ${bx+BLOCK_SIZE-6} ${by+8} Q ${bx+BLOCK_SIZE-6} ${by+6} ${bx+BLOCK_SIZE-8} ${by+6} Z`} 
+                    color="#FFF" 
+                    opacity={0.9} 
+                  />
+
+                  {/* Diagonal Glass Slash / Reflection */}
+                  <Path 
+                    path={`M ${bx+2} ${by+10} L ${bx+10} ${by+2} L ${bx+14} ${by+2} L ${bx+2} ${by+14} Z`} 
+                    color="rgba(255,255,255,0.4)" 
+                  />
+
+                  {/* Base Gloss / Highlight */}
+                  <RoundedRect x={bx + 3} y={by + 3} width={BLOCK_SIZE - 6} height={6} r={3}>
+                    <LinearGradient
+                      start={vec(bx + 3, by + 3)}
+                      end={vec(bx + 3, by + 9)}
+                      colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0)']}
+                    />
+                  </RoundedRect>
+                </Group>
               ) : (
                 <Group>
                   {/* High-Clarity Center — Almost fully transparent to see the parallax image clearly */}
@@ -819,6 +912,26 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                     </Paint>
                   </RoundedRect>
                 </Group>
+              ) : skin.uiStyle === 'anime' && currentPiece ? (
+                /* ── ANIME ACTIVE GLOW BLOCK ── */
+                <Group>
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={6}>
+                    <LinearGradient
+                      start={vec(bx, by)}
+                      end={vec(bx + BLOCK_SIZE, by + BLOCK_SIZE)}
+                      colors={['rgba(255,20,147,0.8)', 'rgba(148,0,211,0.6)']}
+                    />
+                  </RoundedRect>
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={6} color="transparent">
+                    <Paint style="stroke" strokeWidth={2} color="#FFF">
+                      <BlurMask blur={4} style="outer" />
+                    </Paint>
+                  </RoundedRect>
+                  <Path 
+                    path={`M ${bx+BLOCK_SIZE-8} ${by+6} Q ${bx+BLOCK_SIZE-6} ${by+6} ${bx+BLOCK_SIZE-6} ${by+4} Q ${bx+BLOCK_SIZE-6} ${by+6} ${bx+BLOCK_SIZE-4} ${by+6} Q ${bx+BLOCK_SIZE-6} ${by+6} ${bx+BLOCK_SIZE-6} ${by+8} Q ${bx+BLOCK_SIZE-6} ${by+6} ${bx+BLOCK_SIZE-8} ${by+6} Z`} 
+                    color="#FFF" 
+                  />
+                </Group>
               ) : skin.blockStyle.cyber && currentPiece ? (
                 /* ── ACTIVE CYBER BLOCK ── */
                 <Group>
@@ -911,11 +1024,11 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
           </Group>
         )}
 
-        {skin.uiStyle === 'dream' && (
+        {(skin.uiStyle === 'dream' || skin.uiStyle === 'anime') && (
           <Group>
             {/* Ethereal Glowing Frame */}
             <Path path={boardClipPath} color="transparent">
-              <Paint style="stroke" strokeWidth={4} color="rgba(255, 105, 180, 0.4)">
+              <Paint style="stroke" strokeWidth={4} color={skin.uiStyle === 'anime' ? "rgba(148, 0, 211, 0.5)" : "rgba(255, 105, 180, 0.4)"}>
                 <BlurMask blur={8} style="normal" />
               </Paint>
             </Path>
