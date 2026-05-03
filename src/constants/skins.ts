@@ -33,7 +33,7 @@ export interface SkinDefinition {
   price: number;
   preview: string;
   image?: any; // require() image source for Mosaic
-  uiStyle: 'glass' | 'cartoon' | 'neumorphic' | 'kawaii';
+  uiStyle: 'glass' | 'cartoon' | 'neumorphic' | 'kawaii' | 'dream';
   particles?: 'ash' | 'hearts' | 'bubbles' | 'sparks';
   imageScale?: number;
   waterDroplets?: boolean;
@@ -41,6 +41,7 @@ export interface SkinDefinition {
   particleColor: string;
   lineClearEffect: LineClearEffect;
   colors?: SkinColors;
+  frames?: any[]; // For animated backgrounds
 }
 
 export const SKINS: SkinDefinition[] = [
@@ -151,6 +152,120 @@ export const SKINS: SkinDefinition[] = [
       secondary: '#9400D3', // Dark Violet
       accent: '#FF00FF', // Magenta
       background: ['#050010', '#10002B', '#050010'],
+    },
+  },
+  {
+    id: 'anime_dreamscape',
+    name: 'Eternal Dream',
+    price: 3500,
+    preview: '🌸',
+    image: require('../assets/anime-girl/ezgif-frame-001.jpg'),
+    frames: [
+      require('../assets/anime-girl/ezgif-frame-001.jpg'),
+      require('../assets/anime-girl/ezgif-frame-002.jpg'),
+      require('../assets/anime-girl/ezgif-frame-003.jpg'),
+      require('../assets/anime-girl/ezgif-frame-004.jpg'),
+      require('../assets/anime-girl/ezgif-frame-005.jpg'),
+      require('../assets/anime-girl/ezgif-frame-006.jpg'),
+      require('../assets/anime-girl/ezgif-frame-007.jpg'),
+      require('../assets/anime-girl/ezgif-frame-008.jpg'),
+      require('../assets/anime-girl/ezgif-frame-009.jpg'),
+      require('../assets/anime-girl/ezgif-frame-010.jpg'),
+      require('../assets/anime-girl/ezgif-frame-011.jpg'),
+      require('../assets/anime-girl/ezgif-frame-012.jpg'),
+      require('../assets/anime-girl/ezgif-frame-013.jpg'),
+      require('../assets/anime-girl/ezgif-frame-014.jpg'),
+      require('../assets/anime-girl/ezgif-frame-015.jpg'),
+      require('../assets/anime-girl/ezgif-frame-016.jpg'),
+      require('../assets/anime-girl/ezgif-frame-017.jpg'),
+      require('../assets/anime-girl/ezgif-frame-018.jpg'),
+      require('../assets/anime-girl/ezgif-frame-019.jpg'),
+      require('../assets/anime-girl/ezgif-frame-020.jpg'),
+      require('../assets/anime-girl/ezgif-frame-021.jpg'),
+      require('../assets/anime-girl/ezgif-frame-022.jpg'),
+      require('../assets/anime-girl/ezgif-frame-023.jpg'),
+      require('../assets/anime-girl/ezgif-frame-024.jpg'),
+      require('../assets/anime-girl/ezgif-frame-025.jpg'),
+    ],
+    uiStyle: 'dream', 
+    particles: 'sparks',
+    blockStyle: {
+      glass: true,
+      glow: true,
+      opacity: 0.7,
+      borderColor: '#ff69b4',
+    },
+    particleColor: '#ff69b4',
+    lineClearEffect: 'shatter',
+    colors: {
+      primary: '#ffb6c1',
+      secondary: '#dda0dd',
+      accent: '#ffffff',
+      background: ['#1a0b1a', '#2a0b2a', '#1a0b1a'], // Darker background to let the dream image pop
+    },
+  },
+  {
+    id: 'pixel_retro',
+    name: '8-Bit Arcade',
+    price: 1200,
+    preview: '🕹️',
+    image: require('../assets/images/imagine-art-feed-item (2).png'),
+    uiStyle: 'cartoon',
+    blockStyle: {
+      borderRadius: 0,
+      borderWidth: 2,
+      borderColor: '#ffffff',
+    },
+    particleColor: '#ffffff',
+    lineClearEffect: 'explode',
+    colors: {
+      primary: '#ffffff',
+      secondary: '#333333',
+      accent: '#ffcc00',
+      background: ['#000000', '#111111', '#000000'],
+    },
+  },
+  {
+    id: 'solar_inferno_v2',
+    name: 'Solar Flare',
+    price: 2000,
+    preview: '☀️',
+    image: require('../assets/images/1777444483521.jpeg'),
+    uiStyle: 'glass',
+    particles: 'sparks',
+    blockStyle: {
+      lava: true,
+      breathing: true,
+      magnifier: true,
+      magnifierScale: 1.5,
+    },
+    particleColor: '#ff4500',
+    lineClearEffect: 'shatter',
+    colors: {
+      primary: '#ff4500',
+      secondary: '#ff8c00',
+      accent: '#ffff00',
+      background: ['#200000', '#500000', '#200000'],
+    },
+  },
+  {
+    id: 'minimal_zen',
+    name: 'Zen Minimalist',
+    price: 800,
+    preview: '⚪',
+    image: require('../assets/images/imagine-art-feed-item.png'),
+    uiStyle: 'neumorphic',
+    blockStyle: {
+      uniformColor: '#6c757d',
+      borderRadius: 4,
+    },
+    particleColor: '#cccccc',
+    lineClearEffect: 'dissolve',
+    colors: {
+      primary: '#6c757d',
+      secondary: '#cccccc',
+      accent: '#ffffff',
+      background: ['#f0f0f0', '#ffffff', '#f0f0f0'],
     },
   },
 ];

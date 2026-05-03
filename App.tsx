@@ -4,6 +4,7 @@ import { HomeScreen } from './src/screens/HomeScreen';
 import { GameScreen } from './src/screens/GameScreen';
 import { SkinShopScreen } from './src/screens/SkinShopScreen';
 import { GameOverScreen } from './src/screens/GameOverScreen';
+import { ThemeProvider } from './src/components/ThemeProvider';
 
 type Screen = 'home' | 'game' | 'shop' | 'gameover';
 
@@ -56,10 +57,12 @@ const App = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      {renderScreen()}
-    </SafeAreaView>
+    <ThemeProvider>
+      <SafeAreaView style={styles.container}>
+        <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+        {renderScreen()}
+      </SafeAreaView>
+    </ThemeProvider>
   );
 };
 

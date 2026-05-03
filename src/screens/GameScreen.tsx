@@ -22,7 +22,7 @@ interface GameScreenProps {
 }
 
 export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) => {
-  const { activeSkin, activeSkinId, isLoaded } = useSkinStore();
+  const { activeSkin, activeSkinId, playerName, isLoaded } = useSkinStore();
   const game = useTetris(activeSkinId);
 
   const {
@@ -118,10 +118,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
   const isNeumorphic = activeSkin.uiStyle === 'neumorphic';
   const isKawaii    = activeSkin.uiStyle === 'kawaii';
   const isSoft      = isNeumorphic || isKawaii;
+  
+  const primaryColor   = activeSkin.colors?.primary   || '#fff';
+  const secondaryColor = activeSkin.colors?.secondary || '#aaa';
+  const accentColor    = activeSkin.colors?.accent    || '#fff';
+
   const isCyber = activeSkinId === 'cyber_void';
-  const statColor  = isCyber ? '#00FFFF' : ((isSoft && isKawaii) ? secondaryColor : (isSoft ? primaryColor : accentColor));
-  const labelColor = isCyber ? '#FF00FF' : (isSoft ? secondaryColor : 'rgba(255,255,255,0.45)');
-  const dividerColor = isCyber ? 'rgba(0, 255, 255, 0.3)' : (isSoft ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)');
+  const isDream = activeSkin.uiStyle === 'dream';
+  const statColor  = isDream ? '#ff1493' : (isCyber ? activeSkin.colors?.primary : ((isSoft && isKawaii) ? secondaryColor : (isSoft ? primaryColor : accentColor)));
+  const labelColor = isDream ? '#ff69b4' : (isCyber ? '#FF00FF' : (isSoft ? secondaryColor : 'rgba(255,255,255,0.45)'));
+  const dividerColor = isDream ? 'rgba(255, 20, 147, 0.4)' : (isCyber ? 'rgba(0, 255, 255, 0.3)' : (isSoft ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.15)'));
 
   return (
     <GestureHandlerRootView style={styles.container}>
@@ -140,9 +146,10 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
       {/* ── HEADER HUD (OUTSIDE GESTURE DETECTOR SO BUTTONS WORK) ── */}
       <View style={[
         styles.hud,
-        !isSoft && activeSkinId !== 'samurai_embers' && !isCyber && { backgroundColor: 'rgba(0,0,0,0.55)' },
+        !isSoft && activeSkinId !== 'samurai_embers' && !isCyber && !isDream && { backgroundColor: 'rgba(0,0,0,0.55)' },
         activeSkinId === 'samurai_embers' && { backgroundColor: 'rgba(255,69,0,0.1)' },
         isCyber && { backgroundColor: 'rgba(5, 0, 20, 0.8)', borderBottomWidth: 1, borderBottomColor: '#00FFFF' },
+        isDream && { backgroundColor: 'rgba(26, 11, 26, 0.7)', borderBottomWidth: 2, borderBottomColor: '#ff1493', borderStyle: 'solid' },
         isSoft && isKawaii && styles.hudKawaii,
       ]}>
         {/* HOLD */}
@@ -190,10 +197,16 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
             isSoft && styles.pauseBtnSoft,
             isKawaii && styles.pauseBtnKawaii,
             isCyber && { borderColor: '#00FFFF', backgroundColor: 'rgba(0, 255, 255, 0.1)' },
+            isDream && { borderColor: '#ff69b4', backgroundColor: '#fff0f5', borderWidth: 2 },
           ]}
           onPress={onPause}
         >
-          <Text style={[styles.pauseBtnText, isSoft && { color: primaryColor }, isCyber && { color: '#00FFFF' }]}>
+          <Text style={[
+            styles.pauseBtnText, 
+            isSoft && { color: primaryColor }, 
+            isCyber && { color: '#00FFFF' },
+            isDream && { color: '#ff69b4' }
+          ]}>
             {gameState === 'paused' ? '▶' : '⏸'}
           </Text>
         </TouchableOpacity>
@@ -217,6 +230,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
                 revealMask={revealMask}
                 skin={activeSkin}
                 flashOpacity={flashOpacity}
+                playerName={playerName}
               />
               {activeSkinId === 'goku_aura' && <ContinuousAuraOverlay />}
             </View>
