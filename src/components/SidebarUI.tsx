@@ -84,7 +84,10 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
             {row.map((cell, x) => (
               <View key={`next-cell-${x}-${y}`} style={{ width: PREVIEW_BLOCK_SIZE, height: PREVIEW_BLOCK_SIZE }}>
                 {cell !== 0 && (
-                   <View style={[{ width: PREVIEW_BLOCK_SIZE, height: PREVIEW_BLOCK_SIZE, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' }]} />
+                   <View style={[
+                     { width: PREVIEW_BLOCK_SIZE, height: PREVIEW_BLOCK_SIZE, backgroundColor: 'rgba(255, 255, 255, 0.1)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.3)' },
+                     skin.id === 'phantom_ronin' && { backgroundColor: '#000000', borderColor: '#ff00ff', borderWidth: 2 }
+                   ]} />
                 )}
               </View>
             ))}
@@ -141,43 +144,45 @@ export const SidebarUI: React.FC<SidebarUIProps> = ({ score, level, lines, revea
       <View style={styles.sectionHeader}>
         <Text style={[styles.sectionTitle, { color: skin.colors?.primary || '#00BEFF', textShadowColor: (skin.colors?.primary || '#00BEFF') + '80' }]}>NEXT</Text>
       </View>
-      <View style={styles.previewBox}>
+      <View style={skin.id === 'phantom_ronin' ? [styles.previewBox, styles.comicCard] : styles.previewBox}>
         {renderNextPiece()}
       </View>
 
       <View style={styles.statBox}>
         <Text style={styles.statLabel}>SCORE</Text>
-        <View style={styles.glassCard}>
-          <Text style={styles.statValue}>{score.toLocaleString()}</Text>
+        <View style={skin.id === 'phantom_ronin' ? [styles.glassCard, styles.comicCard] : styles.glassCard}>
+          <Text style={skin.id === 'phantom_ronin' ? [styles.statValue, styles.comicText] : styles.statValue}>{score.toLocaleString()}</Text>
         </View>
       </View>
 
       <View style={styles.statBox}>
         <Text style={styles.statLabel}>LEVEL</Text>
-        <View style={styles.glassCard}>
-          <Text style={styles.statValue}>{level}</Text>
+        <View style={skin.id === 'phantom_ronin' ? [styles.glassCard, styles.comicCard] : styles.glassCard}>
+          <Text style={skin.id === 'phantom_ronin' ? [styles.statValue, styles.comicText] : styles.statValue}>{level}</Text>
         </View>
       </View>
 
-      <View style={styles.meterContainer}>
-        <Text style={[styles.meterLabel, { color: skin.colors?.primary || '#00BEFF' }]}>REVEAL</Text>
-        <View style={styles.meterGauge}>
-          {/* 10% Tick Marks */}
-          {Array.from({ length: 9 }).map((_, i) => (
-            <View 
-              key={`tick-${i}`} 
-              style={[styles.meterTick, { bottom: `${(i + 1) * 10}%` }]} 
+      {skin.uiStyle === 'glass' && (
+        <View style={styles.meterContainer}>
+          <Text style={[styles.meterLabel, { color: skin.colors?.primary || '#00BEFF' }]}>REVEAL</Text>
+          <View style={styles.meterGauge}>
+            {/* 10% Tick Marks */}
+            {Array.from({ length: 9 }).map((_, i) => (
+              <View 
+                key={`tick-${i}`} 
+                style={[styles.meterTick, { bottom: `${(i + 1) * 10}%` }]} 
+              />
+            ))}
+            <LinearGradient
+              colors={skin.colors ? [skin.colors.secondary, skin.colors.primary] : ['#004E92', '#00E5FF']}
+              style={[styles.meterFill, { height: `${revealPercentage}%` }]}
             />
-          ))}
-          <LinearGradient
-            colors={skin.colors ? [skin.colors.secondary, skin.colors.primary] : ['#004E92', '#00E5FF']}
-            style={[styles.meterFill, { height: `${revealPercentage}%` }]}
-          />
-          {/* Top liquid gleam */}
-          <View style={[styles.meterGleam, { bottom: `${revealPercentage}%`, backgroundColor: skin.colors?.accent || '#00E5FF', shadowColor: skin.colors?.accent || '#00E5FF' }]} />
+            {/* Top liquid gleam */}
+            <View style={[styles.meterGleam, { bottom: `${revealPercentage}%`, backgroundColor: skin.colors?.accent || '#00E5FF', shadowColor: skin.colors?.accent || '#00E5FF' }]} />
+          </View>
+          <Text style={[styles.meterPercent, { color: skin.colors?.accent || '#00E5FF' }]}>{revealPercentage}%</Text>
         </View>
-        <Text style={[styles.meterPercent, { color: skin.colors?.accent || '#00E5FF' }]}>{revealPercentage}%</Text>
-      </View>
+      )}
     </View>
   );
 };
@@ -293,5 +298,21 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 1,
     shadowRadius: 10,
+  },
+  comicCard: {
+    backgroundColor: '#ffffff',
+    borderWidth: 2,
+    borderColor: '#000000',
+    borderRadius: 0,
+    shadowColor: '#ff00ff',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 5,
+  },
+  comicText: {
+    color: '#000000',
+    fontStyle: 'italic',
+    textShadowColor: 'transparent',
   },
 });

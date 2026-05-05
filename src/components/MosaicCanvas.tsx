@@ -20,6 +20,7 @@ import {
   FillType,
   Text,
   matchFont,
+  RuntimeShader,
 } from '@shopify/react-native-skia';
 import { Board, Piece } from '../systems/TetrisEngine';
 import { SkinDefinition } from '../constants/skins';
@@ -34,6 +35,7 @@ interface MosaicCanvasProps {
   skin: SkinDefinition;
   flashOpacity?: SharedValue<number>;
   playerName?: string;
+  lastClearedRows?: number[];
 }
 
 const DigitalRainDrop: React.FC<{ i: number; canvasH: number; canvasW: number; bgTime: SharedValue<number> }> = ({ i, canvasH, canvasW, bgTime }) => {
@@ -82,6 +84,49 @@ const BLACK_AND_WHITE = [
   0.2126, 0.7152, 0.0722, 0, 0,
   0,      0,      0,      1, 0,
 ];
+
+const HALFTONE_SHADER = Skia.RuntimeEffect.Make(`
+  uniform float2 iResolution;
+  uniform shader iImage;
+
+  half4 main(float2 fragCoord) {
+      half4 color = iImage.eval(fragCoord);
+      
+      // Halftone dots
+      float size = 8.0;
+      float2 grid = floor(fragCoord / size) * size + size * 0.5;
+      float dist = distance(fragCoord, grid);
+      
+      // Brightness determines dot radius
+      float brightness = (color.r + color.g + color.b) / 3.0;
+      float radius = (1.0 - brightness) * (size * 0.45);
+      
+      if (dist < radius) {
+          return half4(0.0, 0.0, 0.0, 1.0); // Black dots
+      }
+      
+      return color;
+  }
+`)!;
+
+const COMIC_WAKE_SHADER = Skia.RuntimeEffect.Make(`
+  uniform float2 iResolution;
+  uniform shader iImage;
+  uniform float2 piecePos;
+  uniform float warpStrength;
+
+  half4 main(float2 fragCoord) {
+      float2 uv = fragCoord / iResolution.xy;
+      
+      // Displacement / Warp logic around piecePos
+      float distToPiece = distance(fragCoord, piecePos);
+      float warp = exp(-distToPiece * 0.03) * warpStrength;
+      float2 offset = normalize(fragCoord - piecePos) * warp;
+      
+      return iImage.eval(fragCoord + offset);
+  }
+`)!;
+
 
 
 const PreloadedFrame = React.memo(({ source, isActive, x, y, width, height, fit }: any) => {
@@ -133,8 +178,41 @@ const AnimatedSkiaImage: React.FC<{ frames: any[]; x: any; y: any; width: number
   );
 });
 
+const ComicSplash: React.FC<{ rows: number[]; canvasW: number }> = ({ rows, canvasW }) => {
+  const splashProgress = useSharedValue(0);
+  
+  useEffect(() => {
+    if (rows.length > 0) {
+      splashProgress.value = 0;
+      splashProgress.value = withTiming(1, { duration: 600, easing: Easing.out(Easing.exp) });
+    }
+  }, [rows]);
+
+  return (
+    <Group>
+      {rows.map((ry) => (
+        Array.from({ length: 12 }).map((_, i) => {
+          const startX = (i / 12) * canvasW + (Math.random() * 20 - 10);
+          const startY = ry * BLOCK_SIZE + (BLOCK_SIZE / 2);
+          
+          const cx = useDerivedValue(() => startX + Math.sin(i + splashProgress.value * 5) * 20 * splashProgress.value);
+          const cy = useDerivedValue(() => startY - 150 * splashProgress.value + (splashProgress.value * splashProgress.value * 50));
+          const opacity = useDerivedValue(() => Math.max(0, 1 - splashProgress.value));
+          const r = useDerivedValue(() => (Math.random() * 5 + 3) * (1 + splashProgress.value));
+
+          return (
+            <Circle key={`foam-${ry}-${i}`} cx={cx} cy={cy} r={r} color="white" opacity={opacity}>
+              <BlurMask blur={4} style="normal" />
+            </Circle>
+          );
+        })
+      ))}
+    </Group>
+  );
+};
+
 export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
-  ({ board, currentPiece, ghostY, revealMask, skin, flashOpacity, playerName = 'Arfat' }) => {
+  ({ board, currentPiece, ghostY, revealMask, skin, flashOpacity, playerName = 'Arfat', lastClearedRows = [] }) => {
     // Super safety check for all critical props
     if (!board || !board[0] || !revealMask || !revealMask[0]) {
       return null;
@@ -149,6 +227,50 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     const carrotImage = useImage(require('../assets/images/bunny/carrot.png'));
     const heartImage = useImage(require('../assets/images/bunny/heart.png'));
     const { parallaxX, parallaxY } = useParallax();
+
+    // --- Breathing Embers Engine & Time loops ---
+    const emberBreath = useSharedValue(0.1);
+    const cyberBreath = useSharedValue(0.1);
+    const bgTime = useSharedValue(0);
+    const packetTime = useSharedValue(0);
+    
+    useEffect(() => {
+      // Always run bgTime, useful for many background effects (like bobbing)
+      bgTime.value = withRepeat(
+        withTiming(1, { duration: 10000, easing: Easing.linear }),
+        -1,
+        false
+      );
+
+      if (skin.id === 'cyber_void') {
+        packetTime.value = withRepeat(
+          withTiming(1, { duration: 4000, easing: Easing.linear }),
+          -1,
+          false
+        );
+      }
+    }, [skin.id, bgTime, packetTime]);
+
+    useEffect(() => {
+      if (skin.blockStyle.breathing || skin.blockStyle.cyber || skin.blockStyle.glow) {
+        // Slow, 3-second inhale/exhale physics loop
+        emberBreath.value = withRepeat(
+          withTiming(0.85, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
+          -1, // Infinite loops
+          true // Reverse (ping-pong)
+        );
+        
+        // Fast, 0.8s cyber pulse
+        cyberBreath.value = withRepeat(
+          withTiming(1, { duration: 400, easing: Easing.inOut(Easing.ease) }),
+          -1,
+          true
+        );
+      } else {
+        emberBreath.value = 0;
+        cyberBreath.value = 0.2;
+      }
+    }, [skin.blockStyle.breathing, skin.blockStyle.cyber, skin.blockStyle.glow, emberBreath, cyberBreath]);
 
     // --- Parallax Overscan Padding ---
     // We render the image slightly larger than the canvas so tilting doesn't reveal black borders
@@ -166,12 +288,67 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
     const enableParallax = skin.uiStyle !== 'kawaii';
     
     const imgX = useDerivedValue(() => (enableParallax ? parallaxX.value : 0) - PARALLAX_PADDING + offsetX);
-    const imgY = useDerivedValue(() => (enableParallax ? parallaxY.value : 0) - PARALLAX_PADDING + offsetY);
+    const imgY = useDerivedValue(() => {
+      let y = (enableParallax ? parallaxY.value : 0) - PARALLAX_PADDING + offsetY;
+      if (skin.bobbingAnimation) {
+        y += Math.sin(bgTime.value * Math.PI * 2) * 15; // Smooth 15px bobbing
+      }
+      return y;
+    });
+
+    const imageCenter = { x: canvasW / 2, y: canvasH / 2 };
     
-    // The magnifier needs an additional offset to stay centered while zoomed
+    const bobbingTransform = useDerivedValue(() => {
+      if (!skin.bobbingAnimation) return [];
+      const wave = bgTime.value * Math.PI * 2;
+      // Cosine gives us a tilt that is 90 degrees out of phase with the sine bobbing
+      // creating a very realistic "surfing" or "floating" motion
+      const rotation = Math.cos(wave) * 0.04; 
+      return [{ rotate: rotation }];
+    });
+    
     const magScale = skin.blockStyle.magnifierScale || 2.0;
     const magX = useDerivedValue(() => (enableParallax ? parallaxX.value : 0) - PARALLAX_PADDING - canvasW * ((magScale - 1) / 2));
     const magY = useDerivedValue(() => (enableParallax ? parallaxY.value : 0) - PARALLAX_PADDING - canvasH * ((magScale - 1) / 2));
+
+    // --- Surfer's Comic Rush: Wake & Water Logic ---
+    const isComic = skin.uiStyle === 'comic';
+    const warpStrength = useSharedValue(0);
+    const piecePos = useDerivedValue(() => {
+      if (!currentPiece) return [0, 0];
+      return [currentPiece.x * BLOCK_SIZE + BLOCK_SIZE, currentPiece.y * BLOCK_SIZE + BLOCK_SIZE];
+    });
+
+    const wakeUniforms = useDerivedValue(() => ({
+      iResolution: [canvasW, canvasH],
+      piecePos: piecePos.value,
+      warpStrength: warpStrength.value,
+    }));
+
+    const halftoneUniforms = useMemo(() => ({
+      iResolution: [canvasW, canvasH],
+    }), [canvasW, canvasH]);
+
+    // The comic warp strength used to trigger on every block move, causing annoying shaking.
+    // We removed the continuous shaking effect on piece drop!
+
+    const stackHeight = useMemo(() => {
+      for (let y = 0; y < ROWS; y++) {
+        if (!board[y]) continue;
+        for (let x = 0; x < COLS; x++) {
+          if (board[y][x] !== null) return ROWS - y;
+        }
+      }
+      return 0;
+    }, [board, ROWS, COLS]);
+
+    const surferImgY = useDerivedValue(() => {
+      const basePos = imgY.value;
+      if (!isComic) return basePos;
+      // Surfer "rises" with the stack height (10 pixels per block)
+      return basePos - stackHeight * 5;
+    });
+
 
     // Explicit clip path (Rounded Rectangle) to prevent Android rendering bleed
     const boardClipPath = useMemo(() => {
@@ -198,48 +375,6 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
       });
       return p;
     }, [canvasW, canvasH]);
-
-    // --- Breathing Embers Engine ---
-    const emberBreath = useSharedValue(0.1);
-    const cyberBreath = useSharedValue(0.1);
-    const bgTime = useSharedValue(0);
-    const packetTime = useSharedValue(0);
-    
-    useEffect(() => {
-      if (skin.id === 'cyber_void') {
-        bgTime.value = withRepeat(
-          withTiming(1, { duration: 10000, easing: Easing.linear }),
-          -1,
-          false
-        );
-        packetTime.value = withRepeat(
-          withTiming(1, { duration: 4000, easing: Easing.linear }),
-          -1,
-          false
-        );
-      }
-    }, [skin.id, bgTime, packetTime]);
-
-    useEffect(() => {
-      if (skin.blockStyle.breathing || skin.blockStyle.cyber) {
-        // Slow, 3-second inhale/exhale physics loop
-        emberBreath.value = withRepeat(
-          withTiming(0.85, { duration: 3000, easing: Easing.inOut(Easing.ease) }),
-          -1, // Infinite loops
-          true // Reverse (ping-pong)
-        );
-        
-        // Fast, 0.8s cyber pulse
-        cyberBreath.value = withRepeat(
-          withTiming(1, { duration: 400, easing: Easing.inOut(Easing.ease) }),
-          -1,
-          true
-        );
-      } else {
-        emberBreath.value = 0;
-        cyberBreath.value = 0.2;
-      }
-    }, [skin.blockStyle.breathing, skin.blockStyle.cyber, emberBreath, cyberBreath]);
 
 
 
@@ -440,8 +575,43 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
             </Group>
           )}
 
+          {/* ── ELDRITCH RESONANCE BACKGROUND ── */}
+          {(skin.id === 'eldritch_resonance') && (
+            <Group>
+              <Rect x={0} y={0} width={canvasW} height={canvasH}>
+                <FractalNoise freqX={0.02} freqY={0.02} octaves={3} />
+                <ColorMatrix
+                  matrix={[
+                    0.1, 0, 0, 0, 0.05, // R
+                    0, 0.05, 0, 0, 0,    // G
+                    0, 0, 0.1, 0, 0.1, // B
+                    0, 0, 0, 1, 0,    // A
+                  ]}
+                />
+              </Rect>
+              <Rect x={0} y={0} width={canvasW} height={canvasH} color="#2e004f" opacity={emberBreath} blendMode="overlay" />
+            </Group>
+          )}
+
+          {/* ── CRYSTALLINE VOID BACKGROUND ── */}
+          {(skin.id === 'crystalline_void') && (
+            <Group>
+              <Rect x={0} y={0} width={canvasW} height={canvasH}>
+                <FractalNoise freqX={0.005} freqY={0.005} octaves={4} />
+                <ColorMatrix
+                  matrix={[
+                    0, 0, 0, 0, 0, // R
+                    0, 0.2, 0, 0, 0.1,    // G
+                    0, 0, 0.3, 0, 0.2, // B
+                    0, 0, 0, 1, 0,    // A
+                  ]}
+                />
+              </Rect>
+            </Group>
+          )}
+
           {/* ── DIAGNOSTIC FALLBACK ── */}
-          {!backgroundImage && skin.id !== 'cyber_void' && skin.id !== 'pixel_retro' && (
+          {!backgroundImage && skin.id !== 'cyber_void' && skin.id !== 'pixel_retro' && skin.id !== 'crystalline_void' && skin.id !== 'eldritch_resonance' && (
             <Rect x={0} y={0} width={canvasW} height={canvasH} color="#FF003222" />
           )}
 
@@ -510,7 +680,7 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
         {/* ── LAYER 1: Vivid image — revealed only through the permanent revealMask OR FULLY for Cartoon/Dream/Anime ── */}
         {(backgroundImage || (skin.frames && skin.frames.length > 0)) && (
-          <Group clip={(skin.blockStyle.marshmallow || skin.uiStyle === 'dream') ? boardClipPath : settledMaskPath}>
+          <Group clip={skin.uiStyle === 'glass' ? settledMaskPath : boardClipPath}>
             {skin.frames && skin.frames.length > 0 ? (
               <AnimatedSkiaImage
                 frames={skin.frames}
@@ -521,14 +691,43 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                 fit={skin.uiStyle === 'anime' ? "contain" : "cover"}
               />
             ) : backgroundImage ? (
-              <Image
-                image={backgroundImage}
-                x={imgX}
-                y={imgY}
-                width={imgWidth}
-                height={imgHeight}
-                fit={(skin.blockStyle.marshmallow && skin.uiStyle !== 'dream') ? "contain" : "cover"}
-              />
+              <Group>
+                {isComic ? (
+                  <Group>
+                    <RuntimeShader
+                      source={HALFTONE_SHADER}
+                      uniforms={halftoneUniforms}
+                    >
+                      <RuntimeShader
+                        source={COMIC_WAKE_SHADER}
+                        uniforms={wakeUniforms}
+                      >
+                        <Image
+                          image={backgroundImage}
+                          x={imgX}
+                          y={surferImgY}
+                          width={imgWidth}
+                          height={imgHeight}
+                          fit="cover"
+                          transform={bobbingTransform}
+                          origin={imageCenter}
+                        />
+                      </RuntimeShader>
+                    </RuntimeShader>
+                  </Group>
+                ) : (
+                  <Image
+                    image={backgroundImage}
+                    x={imgX}
+                    y={imgY}
+                    width={imgWidth}
+                    height={imgHeight}
+                    fit={skin.imageFit || ((skin.blockStyle.marshmallow && skin.uiStyle !== 'dream') ? "contain" : "cover")}
+                    transform={bobbingTransform}
+                    origin={imageCenter}
+                  />
+                )}
+              </Group>
             ) : null}
           </Group>
         )}
@@ -545,6 +744,8 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                 width={imgWidth}
                 height={imgHeight}
                 fit="cover"
+                transform={bobbingTransform}
+                origin={imageCenter}
               />
             </Group>
             {/* Pulsing Heat Magnifier */}
@@ -557,10 +758,17 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                   width={imgWidth}
                   height={imgHeight}
                   fit="cover"
+                  transform={bobbingTransform}
+                  origin={imageCenter}
                 />
               </Group>
             )}
           </Group>
+        )}
+
+        {/* ── LAYER 1.7: Comic Splash (Sea Spray) ── */}
+        {isComic && lastClearedRows.length > 0 && (
+          <ComicSplash rows={lastClearedRows} canvasW={canvasW} />
         )}
 
 
@@ -662,6 +870,45 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                   {/* Top Specular */}
                   <Rect x={bx + 2} y={by + 2} width={BLOCK_SIZE - 4} height={1} color="rgba(255,255,255,0.4)" />
                 </Group>
+              ) : skin.blockStyle.inkStroke ? (
+                /* ── PHANTOM RONIN INK STROKE BLOCK ── */
+                <Group>
+                  <Path path={`M ${bx+1} ${by+1} Q ${bx+BLOCK_SIZE/2} ${by+3} ${bx+BLOCK_SIZE-1} ${by+2} Q ${bx+BLOCK_SIZE-3} ${by+BLOCK_SIZE/2} ${bx+BLOCK_SIZE-2} ${by+BLOCK_SIZE-2} Q ${bx+BLOCK_SIZE/2} ${by+BLOCK_SIZE-4} ${bx+2} ${by+BLOCK_SIZE-1} Q ${bx+4} ${by+BLOCK_SIZE/2} ${bx+1} ${by+1} Z`} color="#000000" />
+                  
+                  {/* Dynamic Neon Pulse Glow */}
+                  <Group opacity={cyberBreath}>
+                    <Path path={`M ${bx+1} ${by+1} Q ${bx+BLOCK_SIZE/2} ${by+3} ${bx+BLOCK_SIZE-1} ${by+2} Q ${bx+BLOCK_SIZE-3} ${by+BLOCK_SIZE/2} ${bx+BLOCK_SIZE-2} ${by+BLOCK_SIZE-2} Q ${bx+BLOCK_SIZE/2} ${by+BLOCK_SIZE-4} ${bx+2} ${by+BLOCK_SIZE-1} Q ${bx+4} ${by+BLOCK_SIZE/2} ${bx+1} ${by+1} Z`} style="stroke" strokeWidth={3} color="#ff00ff">
+                      <BlurMask blur={8} style="outer" />
+                    </Path>
+                  </Group>
+
+                  {/* Core Neon Border */}
+                  <Path path={`M ${bx+1} ${by+1} Q ${bx+BLOCK_SIZE/2} ${by+3} ${bx+BLOCK_SIZE-1} ${by+2} Q ${bx+BLOCK_SIZE-3} ${by+BLOCK_SIZE/2} ${bx+BLOCK_SIZE-2} ${by+BLOCK_SIZE-2} Q ${bx+BLOCK_SIZE/2} ${by+BLOCK_SIZE-4} ${bx+2} ${by+BLOCK_SIZE-1} Q ${bx+4} ${by+BLOCK_SIZE/2} ${bx+1} ${by+1} Z`} style="stroke" strokeWidth={1.5} color="#ff00ff">
+                    <BlurMask blur={2} style="outer" />
+                  </Path>
+                  
+                  <Path path={`M ${bx+1} ${by+1} Q ${bx+BLOCK_SIZE/2} ${by+3} ${bx+BLOCK_SIZE-1} ${by+2} Q ${bx+BLOCK_SIZE-3} ${by+BLOCK_SIZE/2} ${bx+BLOCK_SIZE-2} ${by+BLOCK_SIZE-2} Q ${bx+BLOCK_SIZE/2} ${by+BLOCK_SIZE-4} ${bx+2} ${by+BLOCK_SIZE-1} Q ${bx+4} ${by+BLOCK_SIZE/2} ${bx+1} ${by+1} Z`} style="stroke" strokeWidth={0.5} color="rgba(255,255,255,0.8)" />
+                </Group>
+              ) : skin.blockStyle.refractiveGlass ? (
+                /* ── CRYSTALLINE VOID REFRACTIVE GLASS BLOCK ── */
+                <Group>
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={2} color="rgba(255,255,255,0.05)" />
+                  <RoundedRect x={bx + 1} y={by + 1} width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2} r={2} color="transparent">
+                    <Paint style="stroke" strokeWidth={1} color="rgba(0, 255, 255, 0.4)" />
+                  </RoundedRect>
+                  <Path path={`M ${bx+2} ${by+2} L ${bx+BLOCK_SIZE/2} ${by+BLOCK_SIZE/2} L ${bx+BLOCK_SIZE-2} ${by+2}`} style="stroke" strokeWidth={0.5} color="rgba(255,255,255,0.3)" />
+                  <Path path={`M ${bx+2} ${by+BLOCK_SIZE-2} L ${bx+BLOCK_SIZE/2} ${by+BLOCK_SIZE/2} L ${bx+BLOCK_SIZE-2} ${by+BLOCK_SIZE-2}`} style="stroke" strokeWidth={0.5} color="rgba(255,255,255,0.1)" />
+                  <RoundedRect x={bx + 4} y={by + 4} width={BLOCK_SIZE - 8} height={4} r={2} color="rgba(255,255,255,0.2)" />
+                </Group>
+              ) : skin.blockStyle.eldritchRune ? (
+                /* ── ELDRITCH RESONANCE OBSIDIAN RUNE BLOCK ── */
+                <Group>
+                  <RoundedRect x={bx + 2} y={by + 2} width={BLOCK_SIZE - 4} height={BLOCK_SIZE - 4} r={4} color="#1a001a" />
+                  <Circle cx={bx + BLOCK_SIZE / 2} cy={by + BLOCK_SIZE / 2} r={3} color="#00ff00" opacity={emberBreath}>
+                    <BlurMask blur={2} style="normal" />
+                  </Circle>
+                  <Path path={`M ${bx+BLOCK_SIZE/2} ${by+4} L ${bx+BLOCK_SIZE/2} ${by+BLOCK_SIZE-4} M ${bx+4} ${by+BLOCK_SIZE/2} L ${bx+BLOCK_SIZE-4} ${by+BLOCK_SIZE/2}`} style="stroke" strokeWidth={1} color="#00ff00" opacity={emberBreath} />
+                </Group>
               ) : skin.blockStyle.marshmallow ? (
                 <Group>
                   <RoundedRect
@@ -756,6 +1003,25 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
                       colors={['rgba(255,255,255,0.8)', 'rgba(255,255,255,0)']}
                     />
                   </RoundedRect>
+                </Group>
+              ) : skin.uiStyle === 'comic' ? (
+                /* ── COMIC BOOK BOLD BLOCK ── */
+                <Group>
+                   <RoundedRect
+                    x={bx + 1} y={by + 1}
+                    width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                    r={2}
+                    color="rgba(255,255,255,0.1)"
+                  />
+                  <RoundedRect
+                    x={bx + 1} y={by + 1}
+                    width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                    r={2}
+                  >
+                    <Paint style="stroke" strokeWidth={2.5} color="black" />
+                  </RoundedRect>
+                  {/* Subtle Comic Dot inside block */}
+                  <Circle cx={bx + BLOCK_SIZE/2} cy={by + BLOCK_SIZE/2} r={BLOCK_SIZE/3} color="rgba(0,0,0,0.05)" />
                 </Group>
               ) : (
                 <Group>
@@ -947,6 +1213,24 @@ export const MosaicCanvas: React.FC<MosaicCanvasProps> = React.memo(
 
                   {/* Glitch lines */}
                   <Rect x={bx + 2} y={by + BLOCK_SIZE/2} width={BLOCK_SIZE - 4} height={1.5} color="#FF00FF" opacity={cyberBreath} />
+                </Group>
+              ) : skin.uiStyle === 'comic' ? (
+                /* ── COMIC PIECE ── */
+                <Group>
+                  <RoundedRect
+                    x={bx + 1} y={by + 1}
+                    width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                    r={2}
+                    color="white"
+                  />
+                  <RoundedRect
+                    x={bx + 1} y={by + 1}
+                    width={BLOCK_SIZE - 2} height={BLOCK_SIZE - 2}
+                    r={2}
+                  >
+                    <Paint style="stroke" strokeWidth={3} color="black" />
+                  </RoundedRect>
+                   <Circle cx={bx + BLOCK_SIZE/3} cy={by + BLOCK_SIZE/3} r={2} color="black" opacity={0.3} />
                 </Group>
               ) : (
                 <Group>

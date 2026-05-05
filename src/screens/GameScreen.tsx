@@ -28,7 +28,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
 
   const {
     board, currentPiece, ghostY, nextPieceType, holdPieceType,
-    revealMask, score, level, lines, gameState,
+    revealMask, score, level, lines, gameState, lastClearedRows,
     onMoveLeft, onMoveRight, onMoveDown,
     onHardDrop, onRotateCW, onRotateCCW,
     onHold, onSoftDropStart, onSoftDropEnd, onPause, onStart
@@ -232,6 +232,7 @@ export const GameScreen: React.FC<GameScreenProps> = ({ onBack, onGameOver }) =>
                 skin={activeSkin}
                 flashOpacity={flashOpacity}
                 playerName={playerName}
+                lastClearedRows={lastClearedRows}
               />
               {activeSkinId === 'goku_aura' && <ContinuousAuraOverlay />}
             </View>

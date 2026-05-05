@@ -37,14 +37,11 @@ interface AshParticleProps {
   simulateBunnyCollision?: boolean;
 }
 
-const AshParticle: React.FC<AshParticleProps> = ({ x, y, size, speed, wobble, time, canvasH, canvasW, particleType, image, simulateBunnyCollision }) => {
+const AshParticle: React.FC<AshParticleProps> = ({
+  x, y, size, speed, wobble, time, canvasH, canvasW,
+  particleType, image,
+}) => {
   const isFalling = particleType === 'hearts';
-
-  // The invisible "Bunny Hitbox" exactly in the center of the screen
-  const bunnyCenterX = canvasW / 2;
-  const bunnyCenterY = canvasH / 2;
-  const bunnyRadiusX = canvasW * 0.35;
-  const bunnyRadiusY = canvasH * 0.2;
 
   const cy = useDerivedValue(() => {
     let currentY = isFalling ? y + time.value * speed : y - time.value * speed;
@@ -64,6 +61,16 @@ const AshParticle: React.FC<AshParticleProps> = ({ x, y, size, speed, wobble, ti
     ];
   });
 
+  // Move ALL derived value hooks to the top, unconditionally
+  const bubbleTransform = useDerivedValue(() => [
+    { translateX: cx.value },
+    { translateY: cy.value }
+  ]);
+  const sparkTransform = useDerivedValue(() => [
+    { translateX: cx.value },
+    { translateY: cy.value }
+  ]);
+
   if (particleType === 'hearts' && image) {
     return (
       <Group transform={transform}>
@@ -73,26 +80,21 @@ const AshParticle: React.FC<AshParticleProps> = ({ x, y, size, speed, wobble, ti
   }
 
   if (particleType === 'bubbles') {
-    const bubbleTransform = useDerivedValue(() => [
-      { translateX: cx.value },
-      { translateY: cy.value }
-    ]);
     const bubbleSize = size * 3;
     return (
       <Group transform={bubbleTransform}>
         <Circle cx={0} cy={0} r={bubbleSize} color="rgba(255,255,255,0.1)">
           <Paint style="stroke" strokeWidth={1.5} color="rgba(255,255,255,0.7)" />
         </Circle>
-        <Path path={`M ${-bubbleSize * 0.6} ${-bubbleSize * 0.4} Q ${-bubbleSize * 0.2} ${-bubbleSize * 0.7} ${bubbleSize * 0.2} ${-bubbleSize * 0.6}`} color="rgba(255,255,255,0.9)" style="stroke" strokeWidth={2} strokeCap="round" />
+        <Path
+          path={`M ${-bubbleSize * 0.6} ${-bubbleSize * 0.4} Q ${-bubbleSize * 0.2} ${-bubbleSize * 0.7} ${bubbleSize * 0.2} ${-bubbleSize * 0.6}`}
+          color="rgba(255,255,255,0.9)" style="stroke" strokeWidth={2} strokeCap="round"
+        />
       </Group>
     );
   }
 
   if (particleType === 'sparks') {
-    const sparkTransform = useDerivedValue(() => [
-      { translateX: cx.value },
-      { translateY: cy.value }
-    ]);
     return (
       <Group transform={sparkTransform}>
         <Rect x={-1} y={-size * 4} width={2} height={size * 8} color="rgba(0, 255, 255, 0.6)">
@@ -115,9 +117,9 @@ interface AmbientParticleSystemProps {
 
 export const AmbientParticleSystem: React.FC<AmbientParticleSystemProps> = ({ skin }) => {
   const heartImage = useImage(require('../assets/images/bunny/heart.png'));
-  
+
   const time = useSharedValue(0);
-  
+
   useEffect(() => {
     if (skin.particles) {
       time.value = withRepeat(

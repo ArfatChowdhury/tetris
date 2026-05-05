@@ -18,6 +18,9 @@ export interface BlockStyle {
   fluffy?: boolean;
   uniformColor?: string;
   cyber?: boolean;
+  inkStroke?: boolean;
+  refractiveGlass?: boolean;
+  eldritchRune?: boolean;
 }
 
 export interface SkinColors {
@@ -33,9 +36,11 @@ export interface SkinDefinition {
   price: number;
   preview: string;
   image?: any; // require() image source for Mosaic
-  uiStyle: 'glass' | 'cartoon' | 'neumorphic' | 'kawaii' | 'dream' | 'anime';
+  uiStyle: 'glass' | 'cartoon' | 'neumorphic' | 'kawaii' | 'dream' | 'anime' | 'comic';
   particles?: 'ash' | 'hearts' | 'bubbles' | 'sparks';
   imageScale?: number;
+  imageFit?: 'cover' | 'contain' | 'fill';
+  bobbingAnimation?: boolean;
   waterDroplets?: boolean;
   blockStyle: BlockStyle;
   particleColor: string;
@@ -177,26 +182,24 @@ export const SKINS: SkinDefinition[] = [
     },
   },
   {
-    id: 'solar_inferno_v2',
-    name: 'Solar Flare',
-    price: 2000,
-    preview: '☀️',
+    id: 'surfer_comic',
+    name: 'Surfer\'s Comic Rush',
+    price: 3500,
+    preview: '🏄‍♂️',
     image: require('../assets/images/1777444483521.jpeg'),
-    uiStyle: 'glass',
+    uiStyle: 'comic',
     particles: 'sparks',
     blockStyle: {
-      lava: true,
-      breathing: true,
-      magnifier: true,
-      magnifierScale: 1.5,
+      glass: true,
+      borderColor: '#000000',
     },
-    particleColor: '#ff4500',
+    particleColor: '#ffffff',
     lineClearEffect: 'shatter',
     colors: {
-      primary: '#ff4500',
-      secondary: '#ff8c00',
-      accent: '#ffff00',
-      background: ['#200000', '#500000', '#200000'],
+      primary: '#000000',
+      secondary: '#ffffff',
+      accent: '#ffcc00',
+      background: ['#003366', '#004080', '#003366'],
     },
   },
   {
@@ -217,6 +220,70 @@ export const SKINS: SkinDefinition[] = [
       secondary: '#cccccc',
       accent: '#ffffff',
       background: ['#f0f0f0', '#ffffff', '#f0f0f0'],
+    },
+  },
+  {
+    id: 'phantom_ronin',
+    name: 'Phantom Ronin',
+    price: 4500,
+    preview: '⚔️',
+    image: require('../assets/images/1777444483521.jpeg'),
+    uiStyle: 'anime',
+    imageFit: 'contain',
+    bobbingAnimation: true,
+    blockStyle: {
+      inkStroke: true,
+      glow: true,
+      magnifier: false,
+    },
+    particleColor: '#ff00ff', // Magenta lightning sparks
+    lineClearEffect: 'shatter',
+    colors: {
+      primary: '#000000', // Ink black
+      secondary: '#ff00ff', // Neon magenta
+      accent: '#00ffff', // Neon cyan
+      background: ['#e5e5e5', '#d4d4d4', '#e5e5e5'], // Parchment
+    },
+  },
+  {
+    id: 'crystalline_void',
+    name: 'Crystalline Void',
+    price: 5000,
+    preview: '💎',
+    uiStyle: 'glass',
+    particles: 'bubbles',
+    blockStyle: {
+      refractiveGlass: true,
+      magnifier: true,
+      magnifierScale: 2.5,
+    },
+    particleColor: '#ffffff',
+    lineClearEffect: 'shatter',
+    colors: {
+      primary: '#ffffff',
+      secondary: '#00ced1',
+      accent: '#ff00ff',
+      background: ['#00001a', '#000033', '#00001a'],
+    },
+  },
+  {
+    id: 'eldritch_resonance',
+    name: 'Eldritch Resonance',
+    price: 6660,
+    preview: '👁️',
+    uiStyle: 'glass',
+    particles: 'ash',
+    blockStyle: {
+      eldritchRune: true,
+      breathing: true,
+    },
+    particleColor: '#8a2be2', // Purple void ash
+    lineClearEffect: 'dissolve',
+    colors: {
+      primary: '#2e004f', // Deep void purple
+      secondary: '#00ff00', // Bioluminescent green
+      accent: '#ff0000', // Blood red
+      background: ['#0a001a', '#05000d', '#0a001a'],
     },
   },
 ];

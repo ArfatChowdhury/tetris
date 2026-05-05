@@ -36,6 +36,7 @@ export const useTetris = (activeSkinId: string) => {
   const [revealMask, setRevealMask] = useState<boolean[][]>(
     () => Array.from({ length: BOARD_HEIGHT }, () => Array(BOARD_WIDTH).fill(false))
   );
+  const [lastClearedRows, setLastClearedRows] = useState<number[]>([]);
 
   // --- Mutable refs that always hold the latest value ---
   // These break the stale closure problem in setInterval
@@ -184,6 +185,9 @@ export const useTetris = (activeSkinId: string) => {
       }
 
       audio.play(clearedRows.length === 4 ? 'line_clear_4' : 'line_clear_1');
+      setLastClearedRows(clearedRows);
+      // Reset after a short delay to allow triggering animations
+      setTimeout(() => setLastClearedRows([]), 500);
     }
 
     setBoard(newBoard);
@@ -306,6 +310,8 @@ export const useTetris = (activeSkinId: string) => {
 
     if (clearedRows.length > 0) {
       audio.play(clearedRows.length === 4 ? 'line_clear_4' : 'line_clear_1');
+      setLastClearedRows(clearedRows);
+      setTimeout(() => setLastClearedRows([]), 500);
       const nextLines = currentLines + clearedRows.length;
       setLines(nextLines);
       linesRef.current = nextLines;
@@ -436,6 +442,7 @@ export const useTetris = (activeSkinId: string) => {
     level,
     lines,
     gameState,
+    lastClearedRows,
     onMoveLeft: useCallback(() => movePiece(-1, 0), [movePiece]),
     onMoveRight: useCallback(() => movePiece(1, 0), [movePiece]),
     onMoveDown: useCallback(() => movePiece(0, 1), [movePiece]),
